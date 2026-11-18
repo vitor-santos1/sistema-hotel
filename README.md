@@ -48,6 +48,7 @@ Os dados ficam em `dados_hotel.json`, criado na primeira execução com 4 quarto
 | `gerar_dados_exemplo.py` | Gera o `dados_exemplo.json` (um ano fictício de movimento, 557 reservas) |
 | `dados_exemplo.json` | Dados fictícios usados pelos testes (opcional na Análise, via "Abrir JSON…") |
 | `app_classico.py` | As telas básicas com Tkinter puro (versão reserva, sem a Análise de dados) |
+| `GUIA_DE_ESTUDO.md` | **Para estudar**: o que cada classe faz, linhas do código, perguntas prováveis e divisão da fala |
 | `tests/teste_regras.py` | Executa o roteiro da apresentação e confere os resultados |
 | `tests/teste_analise.py` | Confere os cálculos da análise com números conhecidos |
 | `instalar.bat` / `executar.bat` | Instalação e execução com dois cliques no Windows |

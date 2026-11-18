@@ -12,7 +12,6 @@ valores vêm dos cálculos que já existem nelas (Reserva.total, Consumo.subtota
 from __future__ import annotations
 
 import csv
-import json
 import os
 from collections import defaultdict
 from datetime import date

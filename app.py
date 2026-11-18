@@ -296,6 +296,8 @@ class Pagina(ctk.CTkFrame):
 
 
 class PaginaPainel(Pagina):
+    """Tela inicial: números do dia, mapa de quartos, hospedagens em andamento e fechamento de caixa."""
+
     titulo = "Painel"
     subtitulo = "Situação do hotel hoje"
 
@@ -406,6 +408,8 @@ class JanelaRelatorio(ctk.CTkToplevel):
 
 
 class PaginaHospedes(Pagina):
+    """Tela de cadastro e exclusão de hóspedes (usa Hotel.cadastrar_hospede e Hotel.excluir_hospede)."""
+
     titulo = "Hóspedes"
     subtitulo = "Pessoas responsáveis pelas reservas"
 
@@ -443,6 +447,8 @@ class PaginaHospedes(Pagina):
 
 
 class PaginaQuartos(Pagina):
+    """Tela de cadastro de quartos, alteração da diária e exclusão (usa os métodos de quarto do Hotel)."""
+
     titulo = "Quartos"
     subtitulo = "Capacidade e diária de cada quarto"
 
@@ -492,6 +498,8 @@ class PaginaQuartos(Pagina):
 
 
 class PaginaServicos(Pagina):
+    """Tela do catálogo de serviços extras (frigobar, lavanderia...)."""
+
     titulo = "Serviços"
     subtitulo = "Catálogo de extras: frigobar, lavanderia, refeições"
 
@@ -526,6 +534,8 @@ class PaginaServicos(Pagina):
 
 
 class PaginaReservas(Pagina):
+    """Tela de reservas: consulta quartos livres (Hotel.quartos_disponiveis), reserva e cancela."""
+
     titulo = "Reservas"
     subtitulo = "Consulte a disponibilidade e reserve um quarto"
 
@@ -621,6 +631,8 @@ class PaginaReservas(Pagina):
 
 
 class PaginaHospedagem(Pagina):
+    """Tela da estadia: check-in, lançamento de consumos, conta (Reserva.extrato) e checkout."""
+
     titulo = "Hospedagem"
     subtitulo = "Check-in, consumos e fechamento da conta"
 
@@ -781,6 +793,8 @@ class Grafico(tk.Canvas):
 
 
 class PaginaAnalise(Pagina):
+    """Tela de Análise de dados: mostra os indicadores calculados pela classe Analise (analise.py)."""
+
     titulo = "Análise de dados"
     subtitulo = "Indicadores calculados a partir do arquivo JSON"
 
@@ -893,6 +907,8 @@ class PaginaAnalise(Pagina):
 # ---------------------------------------------------------------------------
 
 class Aplicacao(ctk.CTk):
+    """Janela principal: monta o menu lateral, cria uma página de cada tipo e troca entre elas."""
+
     # (seção do menu, nome, classe da página)
     PAGINAS = [("Operação", "Painel", PaginaPainel),
                ("Operação", "Reservas", PaginaReservas),

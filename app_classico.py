@@ -115,6 +115,8 @@ class Aba(ttk.Frame):
 # ---------------------------------------------------------------------------
 
 class AbaPainel(Aba):
+    """Aba inicial: números do dia e hospedagens em andamento."""
+
     def __init__(self, master, hotel):
         super().__init__(master, hotel)
         self.cards = ttk.Frame(self)
@@ -151,6 +153,8 @@ class AbaPainel(Aba):
 
 
 class AbaHospedes(Aba):
+    """Aba de cadastro e exclusão de hóspedes."""
+
     def __init__(self, master, hotel):
         super().__init__(master, hotel)
         form = ttk.LabelFrame(self, text="Novo hóspede", padding=8)
@@ -180,6 +184,8 @@ class AbaHospedes(Aba):
 
 
 class AbaQuartos(Aba):
+    """Aba de cadastro de quartos, alteração da diária e exclusão."""
+
     def __init__(self, master, hotel):
         super().__init__(master, hotel)
         form = ttk.LabelFrame(self, text="Novo quarto / alterar diária", padding=8)
@@ -220,6 +226,8 @@ class AbaQuartos(Aba):
 
 
 class AbaServicos(Aba):
+    """Aba do catálogo de serviços extras."""
+
     def __init__(self, master, hotel):
         super().__init__(master, hotel)
         form = ttk.LabelFrame(self, text="Novo serviço / extra", padding=8)
@@ -243,6 +251,8 @@ class AbaServicos(Aba):
 
 
 class AbaReservas(Aba):
+    """Aba de reservas: consulta quartos livres, reserva e cancela."""
+
     def __init__(self, master, hotel):
         super().__init__(master, hotel)
         topo = ttk.Frame(self)
@@ -334,6 +344,8 @@ class AbaReservas(Aba):
 
 
 class AbaHospedagem(Aba):
+    """Aba da estadia: check-in, consumos, conta e checkout."""
+
     def __init__(self, master, hotel):
         super().__init__(master, hotel)
         esquerda = ttk.Frame(self)
@@ -421,6 +433,8 @@ class AbaHospedagem(Aba):
 # ---------------------------------------------------------------------------
 
 class Aplicacao(tk.Tk):
+    """Janela principal da versão reserva: cria as abas e troca entre elas."""
+
     def __init__(self, hotel: Hotel):
         super().__init__()
         self.hotel = hotel

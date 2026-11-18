@@ -259,6 +259,8 @@ class Consumo:
 
 
 class StatusReserva(Enum):
+    """Situações possíveis de uma reserva: Confirmada -> Em hospedagem -> Concluída (ou Cancelada)."""
+
     CONFIRMADA = "Confirmada"
     EM_HOSPEDAGEM = "Em hospedagem"
     CONCLUIDA = "Concluída"
