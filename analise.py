@@ -19,10 +19,13 @@ from decimal import Decimal
 
 from modelos import Hotel, RegraNegocioErro, StatusReserva
 
+# Constantes: valores fixos usados em vários lugares. ZERO é o ponto de partida das somas de dinheiro.
 ZERO = Decimal("0.00")
 MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"]
 
 
+# A classe Analise NÃO altera nada: só LÊ as reservas de um Hotel e calcula indicadores.
+# Ela reaproveita os cálculos que já existem nas outras classes (Reserva.total, Consumo.subtotal...).
 class Analise:
     """Indicadores calculados a partir das reservas de um Hotel."""
 
@@ -31,6 +34,8 @@ class Analise:
         self.origem = origem
 
     # ---------------- leitura do arquivo ----------------
+    # LEITURA DE ARQUIVO JSON: reaproveita Hotel.carregar para ler o arquivo e montar os objetos.
+    # Se o arquivo não existe ou não tem o formato esperado, o 'try/except' captura o erro e mostra uma mensagem clara.
     @classmethod
     def de_arquivo(cls, caminho: str) -> "Analise":
         """Abre um arquivo .json e monta a análise. Mostra um erro claro se o arquivo não servir."""
@@ -45,6 +50,7 @@ class Analise:
         return cls(hotel, origem=os.path.basename(caminho))
 
     # ---------------- grupos de reservas ----------------
+    # *status aceita vários valores de uma vez. Devolve as reservas cuja situação está entre eles.
     def _com_status(self, *status: StatusReserva) -> list:
         return [r for r in self.hotel.reservas.values() if r.status in status]
 
@@ -57,6 +63,7 @@ class Analise:
         return len(self.hotel.reservas)
 
     # ---------------- indicadores de dinheiro ----------------
+    # Só hospedagens CONCLUÍDAS contam como dinheiro recebido. sum(... for r in ...) soma o total de cada uma.
     def faturamento_total(self) -> Decimal:
         return sum((r.total for r in self.concluidas), ZERO)
 
@@ -66,6 +73,7 @@ class Analise:
     def faturamento_consumos(self) -> Decimal:
         return sum((r.valor_consumos for r in self.concluidas), ZERO)
 
+    # Ticket médio = faturamento ÷ número de hospedagens. 'x if n else 0' evita dividir por zero.
     def ticket_medio(self) -> Decimal:
         """Quanto cada hospedagem concluída rendeu, em média."""
         n = len(self.concluidas)
@@ -83,6 +91,8 @@ class Analise:
             return None
         return min(r.entrada for r in realizadas), max(r.saida for r in realizadas)
 
+    # OCUPAÇÃO = diárias vendidas ÷ diárias possíveis (quartos × dias do período) × 100.
+    # Exemplo: 5 diárias vendidas, 2 quartos, 24 dias -> 5 ÷ 48 = 10,4%.
     def taxa_ocupacao(self) -> float:
         """Diárias vendidas ÷ diárias disponíveis (quartos × dias do período), em %."""
         periodo = self.periodo()
@@ -104,6 +114,8 @@ class Analise:
         return sum(r.qtd_diarias for r in concluidas) / len(concluidas) if concluidas else 0.0
 
     # ---------------- agrupamentos (para gráficos e tabelas) ----------------
+    # AGRUPAR: o dicionário 'soma' vai acumulando o total de cada mês. defaultdict cria a chave com valor zero se ela ainda não existe.
+    # No fim, sorted(...) ordena por data.
     def faturamento_por_mes(self) -> list[tuple[str, Decimal]]:
         """[('jan/26', Decimal), ...] em ordem de data. O mês é o do check-out."""
         soma: dict[tuple[int, int], Decimal] = defaultdict(lambda: ZERO)
@@ -111,6 +123,7 @@ class Analise:
             soma[(r.saida.year, r.saida.month)] += r.total
         return [(f"{MESES[m - 1]}/{a % 100:02d}", valor) for (a, m), valor in sorted(soma.items())]
 
+    # Mesma ideia, agrupando por quarto. sorted(..., reverse=True) coloca o quarto que mais rendeu primeiro.
     def faturamento_por_quarto(self) -> list[tuple[str, Decimal]]:
         soma: dict[str, Decimal] = defaultdict(lambda: ZERO)
         for r in self.concluidas:
@@ -127,6 +140,7 @@ class Analise:
                 valor[c.servico.descricao] += c.subtotal
         return sorted(((d, qtd[d], valor[d]) for d in qtd), key=lambda item: item[2], reverse=True)
 
+    # RANKING: soma o gasto de cada hóspede, ordena do maior para o menor e fica com os primeiros ([:quantos]).
     def ranking_hospedes(self, quantos: int = 5) -> list[tuple[str, int, Decimal]]:
         """[(nome, hospedagens, total gasto)] de quem mais gastou."""
         qtd: dict[int, int] = defaultdict(int)
@@ -138,6 +152,7 @@ class Analise:
         return [(self.hotel.hospedes[hid].nome, qtd[hid], total[hid]) for hid in ordem]
 
     # ---------------- exportação ----------------
+    # Grava um arquivo CSV (texto separado por ';') que o Excel abre direto. 'utf-8-sig' faz os acentos aparecerem certos no Excel.
     def exportar_csv(self, caminho: str) -> int:
         """Grava as hospedagens concluídas em CSV (abre direto no Excel). Retorna quantas linhas."""
         def num(valor: Decimal) -> str:

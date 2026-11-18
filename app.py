@@ -14,6 +14,9 @@ import tkinter as tk
 from datetime import date, datetime
 from tkinter import ttk, messagebox, filedialog
 
+# Bibliotecas de interface: tkinter é a que já vem com o Python; customtkinter (instalada pelo pip) dá o visual moderno.
+# Como ler este arquivo: cada TELA é uma classe. Cada tela monta os campos e botões no __init__, e o método
+# atualizar() busca os dados no Hotel e preenche as tabelas. Nenhuma regra de negócio mora aqui.
 import customtkinter as ctk
 
 from analise import Analise
@@ -58,6 +61,7 @@ def fonte(tamanho=13, negrito=False):
     return ctk.CTkFont(family="Segoe UI", size=tamanho, weight="bold" if negrito else "normal")
 
 
+# Funções pequenas de apoio ao visual (tema claro/escuro). Não têm regra do hotel.
 def escuro() -> bool:
     return ctk.get_appearance_mode() == "Dark"
 
@@ -108,6 +112,8 @@ def estilizar_tabelas():
             Tabela.todas.remove(tabela)
 
 
+# COMPONENTE reutilizável: uma tabela com rolagem. Todas as telas usam esta mesma classe.
+# preencher(linhas) coloca os dados; selecionado() devolve a linha que o usuário clicou.
 class Tabela(ctk.CTkFrame):
     """Tabela (Treeview) com linhas alternadas e cor da situação da reserva."""
 
@@ -144,6 +150,7 @@ class Tabela(ctk.CTkFrame):
         return sel[0] if sel else None
 
 
+# HERANÇA: (ctk.CTkFrame) significa que Cartao herda tudo de um quadro do customtkinter e acrescenta borda e título.
 class Cartao(ctk.CTkFrame):
     """Painel com borda fina, título e uma área de ações à direita do título."""
 
@@ -160,6 +167,7 @@ class Cartao(ctk.CTkFrame):
             ctk.CTkFrame(self, height=1, fg_color=BORDA).pack(fill="x", padx=1)
 
 
+# HERANÇA: Indicador é um Cartao com rótulo, número grande e detalhe. Aproveita tudo do Cartao.
 class Indicador(Cartao):
     """Cartão de número: rótulo, valor em destaque e uma linha de detalhe."""
 
@@ -177,6 +185,8 @@ class Indicador(Cartao):
         self.detalhe.configure(text=detalhe)
 
 
+# Faz o campo de texto parar de aceitar caracteres ao chegar no limite e aplicar a máscara (CPF, telefone).
+# As funções de máscara e os limites vêm do modelos.py: a tela só as usa.
 def limitar_entrada(entrada, maximo, permitido=None, formatador=None):
     """Impede digitar além do limite e caracteres não permitidos.
     Com 'formatador', também aplica a máscara enquanto a pessoa digita (CPF, telefone)."""
@@ -241,6 +251,8 @@ def limpar(*entradas):
 # Páginas
 # ---------------------------------------------------------------------------
 
+# CLASSE BASE de todas as telas. Monta o cabeçalho e guarda o 'hotel'. Cada tela (PaginaReservas, PaginaHospedes...)
+# herda daqui, por isso todas têm o método executar() e a mesma aparência.
 class Pagina(ctk.CTkFrame):
     """Classe base das páginas: cabeçalho, acesso ao hotel e tratamento de erros."""
 
@@ -276,6 +288,8 @@ class Pagina(ctk.CTkFrame):
         if messagebox.askyesno("Excluir", f"Excluir {nome(chave)}? Essa ação não pode ser desfeita."):
             self.executar(lambda: excluir(chave), "Cadastro excluído.")
 
+    # PONTE ENTRE TELA E REGRAS: roda a ação pedida (ex.: reservar). Se uma regra for violada, o modelos.py lança
+    # RegraNegocioErro e o 'except' abaixo mostra a mensagem. Se deu certo, avisa e atualiza a tela.
     def executar(self, acao, sucesso=None):
         """Executa uma operação; se uma regra for violada, mostra o motivo."""
         try:
@@ -295,6 +309,7 @@ class Pagina(ctk.CTkFrame):
         return resultado
 
 
+# Cada tela segue o mesmo molde: 1) __init__ monta o visual  2) métodos dos botões chamam o Hotel  3) atualizar() recarrega os dados.
 class PaginaPainel(Pagina):
     """Tela inicial: números do dia, mapa de quartos, hospedagens em andamento e fechamento de caixa."""
 
@@ -330,6 +345,7 @@ class PaginaPainel(Pagina):
                              (80, 240, 90, 110, 110, 140), altura=5)
         self.tabela.pack(fill="both", expand=True, padx=12, pady=(4, 12))
 
+    # O botão 'Fechar caixa': pede confirmação e chama hotel.fechar_caixa(). O cálculo todo está em modelos.py.
     def fechar_caixa(self):
         pendentes = self.hotel.reservas_caixa_aberto()
         if not pendentes:
@@ -578,6 +594,7 @@ class PaginaReservas(Pagina):
     def _ler_formulario(self):
         return ler_data(self.entrada.get()), ler_data(self.saida.get()), int(self.pessoas.get())
 
+    # Botão 'Consultar quartos livres': lê as datas digitadas e pede ao Hotel quais quartos estão livres.
     def consultar(self):
         def acao():
             entrada, saida, pessoas = self._ler_formulario()
@@ -592,6 +609,8 @@ class PaginaReservas(Pagina):
                 raise RegraNegocioErro("Nenhum quarto disponível para esse período e quantidade de pessoas.")
         self.executar(acao)
 
+    # Botão 'Confirmar reserva': chama hotel.reservar(...). Se o quarto estiver ocupado nas datas, a regra lança o erro
+    # e o executar() mostra 'já está reservado nesse período'.
     def reservar(self):
         numero = self.disponiveis.selecionado()
         if not self.hospede.get() or not numero or not self._consultou:
@@ -741,6 +760,7 @@ def abreviar(valor) -> str:
     return f"{v / 1000:.1f}".replace(".", ",") + " mil" if v >= 1000 else f"{v:.0f}"
 
 
+# Gráfico desenhado à mão no Canvas (uma área de desenho): retângulos para as barras e textos para os valores.
 class Grafico(tk.Canvas):
     """Gráfico de barras desenhado direto no Canvas do Tkinter (sem bibliotecas extras)."""
 
@@ -792,6 +812,7 @@ class Grafico(tk.Canvas):
                 self.create_text(x1 + 6, (y0 + y1) / 2, text=abreviar(valor), fill=forte, font=letra, anchor="w")
 
 
+# Mostra o que a classe Analise (analise.py) calculou. A tela só pega os resultados e desenha cartões, gráficos e tabelas.
 class PaginaAnalise(Pagina):
     """Tela de Análise de dados: mostra os indicadores calculados pela classe Analise (analise.py)."""
 
@@ -906,6 +927,7 @@ class PaginaAnalise(Pagina):
 # Janela principal
 # ---------------------------------------------------------------------------
 
+# A JANELA PRINCIPAL. Monta o menu lateral, cria UMA página de cada tipo (lista PAGINAS) e mostra uma de cada vez.
 class Aplicacao(ctk.CTk):
     """Janela principal: monta o menu lateral, cria uma página de cada tipo e troca entre elas."""
 
@@ -989,6 +1011,7 @@ class Aplicacao(ctk.CTk):
         except tk.TclError:
             pass  # em outros sistemas mantém o tamanho padrão
 
+    # Troca de tela: marca o item do menu, pede à página para atualizar() seus dados e a traz para a frente (tkraise).
     def mostrar(self, indice):
         """Traz a página escolhida para a frente e atualiza seus dados."""
         for i, b in enumerate(self.botoes):
@@ -1019,5 +1042,7 @@ class Aplicacao(ctk.CTk):
         self.paginas[self.indice_atual].atualizar()  # redesenha os gráficos com as cores do tema
 
 
+# Ponto de entrada: só roda quando o arquivo é executado direto (python app.py).
+# 1) Hotel.carregar lê o dados_hotel.json  2) cria a janela  3) mainloop() deixa a janela aberta esperando os cliques.
 if __name__ == "__main__":
     Aplicacao(Hotel.carregar(ARQUIVO_DADOS)).mainloop()

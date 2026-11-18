@@ -11,6 +11,10 @@ Paradigma: Orientação a Objetos.
 
 from __future__ import annotations
 
+# Imports: trazem ferramentas prontas do Python para este arquivo.
+#   json = ler e gravar arquivos JSON      os = trabalhar com arquivos e pastas
+#   date, datetime = datas e horas         Decimal = números exatos (para dinheiro)
+#   Enum = lista fechada de valores
 import json
 import os
 from datetime import date, datetime
@@ -22,10 +26,15 @@ from enum import Enum
 # Funções auxiliares
 # ---------------------------------------------------------------------------
 
+# Esta classe é um TIPO DE ERRO criado por nós. Quando uma regra do hotel é violada
+# (ex.: quarto já reservado), o código faz  raise RegraNegocioErro("mensagem")  e a tela mostra a mensagem.
 class RegraNegocioErro(Exception):
     """Erro lançado quando uma regra do hotel é violada."""
 
 
+# Por que Decimal e não float? O float erra contas (0.1 + 0.2 = 0.30000000000000004).
+# O Decimal faz conta exata, essencial para dinheiro.
+# Esta função aceita '180', '180,50' ou 'R$ 1.234,56' e devolve um Decimal com 2 casas.
 def dinheiro(valor) -> Decimal:
     """Converte texto/número para Decimal com 2 casas (nunca float para dinheiro)."""
     try:
@@ -60,10 +69,13 @@ def formatar_data(d: date) -> str:
 # Limites de tamanho e validações de texto (as telas usam os mesmos limites)
 # ---------------------------------------------------------------------------
 
+# Dicionário (dict): guarda pares chave -> valor. Aqui, o tamanho máximo de cada campo.
+# As classes e as telas consultam LIMITES['nome'], assim o número 60 fica escrito num lugar só.
 LIMITES = {"nome": 60, "documento": 14, "telefone": 15,
            "numero_quarto": 6, "categoria": 20, "capacidade": 10, "descricao": 40}
 
 
+# Padrão de todas as validações: se algo está errado, 'raise RegraNegocioErro'; se está certo, devolve o valor limpo.
 def validar_nome(nome: str) -> str:
     """Nome com 3 a 60 caracteres, só letras (aceita espaço, apóstrofo, hífen e ponto)."""
     nome = " ".join(str(nome).split())  # tira espaços repetidos
@@ -73,6 +85,7 @@ def validar_nome(nome: str) -> str:
         raise RegraNegocioErro("O nome deve ter pelo menos 3 caracteres.")
     if len(nome) > LIMITES["nome"]:
         raise RegraNegocioErro(f"O nome deve ter no máximo {LIMITES['nome']} caracteres.")
+    # all(...) é True só se TODOS os caracteres passam no teste (letra, espaço, apóstrofo, hífen ou ponto).
     if not all(c.isalpha() or c in " '-." for c in nome):
         raise RegraNegocioErro("O nome deve conter apenas letras.")
     return nome
@@ -80,12 +93,16 @@ def validar_nome(nome: str) -> str:
 
 def limpar_documento(documento: str) -> str:
     """CPF tem 11 dígitos; RG tem de 7 a 9 (pode terminar em X). Guarda só os caracteres úteis."""
+    # Fica só com letras e números (tira pontos e traço): '123.456.789-00' vira '12345678900'.
+    # [c for c in texto if ...] é uma 'lista em uma linha': percorre o texto e guarda só o que passa no teste.
     limpo = "".join(c for c in str(documento).upper() if c.isalnum())
     if not limpo:
         raise RegraNegocioErro("O documento do hóspede é obrigatório.")
+    # Só números, ou números com um X no fim (alguns RGs terminam em X).
     so_numeros = limpo.isdigit() or (limpo[:-1].isdigit() and limpo.endswith("X"))
     if not so_numeros:
         raise RegraNegocioErro("O documento deve ter apenas números (o RG pode terminar em X).")
+    # CPF tem 11 dígitos; RG tem de 7 a 9.
     if len(limpo) not in (7, 8, 9, 11):
         raise RegraNegocioErro("Documento inválido: o CPF tem 11 dígitos e o RG de 7 a 9.")
     return limpo
@@ -93,6 +110,8 @@ def limpar_documento(documento: str) -> str:
 
 def mascara_documento(texto: str) -> str:
     """Formata enquanto digita: 12345678900 -> 123.456.789-00 (o RG pode terminar em X)."""
+    # Máscara: monta 123.456.789-00 conforme a pessoa digita, colocando ponto e traço nos lugares certos.
+    # corpo[:3] são os 3 primeiros caracteres, corpo[3:6] os 3 seguintes, e assim por diante (fatiamento).
     t = [c for c in str(texto).upper() if c.isalnum()]
     digitos = "".join(c for c in t if c.isdigit())[:11]
     corpo = digitos + ("X" if t and t[-1] == "X" and len(digitos) in (7, 8) else "")
@@ -148,6 +167,9 @@ def validar_tamanho(texto: str, campo: str, rotulo: str, minimo: int = 1) -> str
 class Hospede:
     """Hóspede responsável pela reserva."""
 
+    # __init__ é o CONSTRUTOR: roda quando criamos um objeto, ex.: Hospede(1, 'Maria', '12345678900').
+    # 'self' é o próprio objeto que está sendo criado; self.nome = ... guarda o dado dentro dele.
+    # validar=True confere os dados. validar=False é usado só ao carregar o arquivo (não derruba o programa com dados antigos).
     def __init__(self, id: int, nome: str, documento: str, telefone: str = "",
                  validar: bool = True):
         self.id = id
@@ -158,6 +180,7 @@ class Hospede:
         else:  # dados antigos do arquivo: carrega como estão, sem derrubar o programa
             self.nome, self.documento, self.telefone = nome.strip(), documento.strip(), telefone.strip()
 
+    # @property faz o método ser usado como se fosse um dado: hospede.documento_formatado (sem parênteses).
     @property
     def documento_formatado(self) -> str:
         return formatar_documento(self.documento)
@@ -166,9 +189,12 @@ class Hospede:
     def telefone_formatado(self) -> str:
         return formatar_telefone(self.telefone)
 
+    # __str__ define como o objeto aparece quando vira texto: print(hospede) ou f"{hospede}".
     def __str__(self):
         return f"{self.nome} ({self.documento_formatado})"
 
+    # para_dict transforma o objeto num dicionário simples, que dá para gravar no arquivo JSON.
+    # O caminho de volta (JSON -> objetos) está em Hotel.carregar.
     def para_dict(self):
         return {"id": self.id, "nome": self.nome,
                 "documento": self.documento, "telefone": self.telefone}
@@ -193,10 +219,13 @@ class Quarto:
         self.capacidade = int(capacidade)
         self.diaria = diaria  # usa o setter abaixo (validação)
 
+    # ENCAPSULAMENTO: o valor de verdade fica em self._diaria (o _ avisa 'não mexa direto').
+    # Quem usa a classe lê e escreve  quarto.diaria : o getter (@property) devolve o valor e o setter valida antes de guardar.
     @property
     def diaria(self) -> Decimal:
         return self._diaria
 
+    # Setter: roda quando alguém escreve  quarto.diaria = 200.  Se o valor for inválido lança erro e NADA é guardado.
     @diaria.setter
     def diaria(self, valor):
         valor = dinheiro(valor)
@@ -204,6 +233,7 @@ class Quarto:
             raise RegraNegocioErro("A diária deve ser maior que zero.")
         self._diaria = valor
 
+    # Devolve True ou False. '0 < pessoas <= capacidade' é uma comparação encadeada: maior que 0 E menor ou igual à capacidade.
     def comporta(self, pessoas: int) -> bool:
         return 0 < pessoas <= self.capacidade
 
@@ -218,6 +248,7 @@ class Quarto:
 class Servico:
     """Item do catálogo de extras (frigobar, lavanderia...)."""
 
+    # Servico é o item do CATÁLOGO (ex.: Água, R$ 10,00). O preço pode mudar depois; por isso o Consumo guarda uma cópia do preço.
     def __init__(self, id: int, descricao: str, preco, validar: bool = True):
         if validar:
             descricao = validar_tamanho(descricao, "descricao", "A descrição do serviço", minimo=2)
@@ -240,6 +271,8 @@ class Servico:
 class Consumo:
     """Consumo lançado em uma reserva. Guarda o preço contratado no momento."""
 
+    # Consumo = quanto de um Servico foi usado numa reserva. Guarda uma REFERÊNCIA ao Servico (associação) e a quantidade.
+    # preco_unitario=None significa 'se ninguém informar, use o preço atual do catálogo'.
     def __init__(self, servico: Servico, quantidade: int, preco_unitario=None):
         if int(quantidade) <= 0:
             raise RegraNegocioErro("A quantidade deve ser positiva.")
@@ -249,6 +282,7 @@ class Consumo:
         self.preco_unitario = dinheiro(servico.preco if preco_unitario is None
                                        else preco_unitario)
 
+    # CÁLCULO dentro da classe: subtotal = quantidade x preço unitário. Usa-se assim: consumo.subtotal
     @property
     def subtotal(self) -> Decimal:
         return self.quantidade * self.preco_unitario
@@ -261,6 +295,8 @@ class Consumo:
 class StatusReserva(Enum):
     """Situações possíveis de uma reserva: Confirmada -> Em hospedagem -> Concluída (ou Cancelada)."""
 
+    # Enum = lista FECHADA de valores. Em vez de textos soltos ('confirmada', 'Confirmada'...) que dariam erro de digitação,
+    # usamos StatusReserva.CONFIRMADA. O texto bonito fica em .value ('Em hospedagem') e o nome em .name ('EM_HOSPEDAGEM').
     CONFIRMADA = "Confirmada"
     EM_HOSPEDAGEM = "Em hospedagem"
     CONCLUIDA = "Concluída"
@@ -270,6 +306,8 @@ class StatusReserva(Enum):
 class Reserva:
     """Centro do sistema: liga Hospede + Quarto e reúne os Consumos."""
 
+    # A Reserva é o CENTRO do sistema. Recebe os objetos Hospede e Quarto já prontos e guarda a referência a eles.
+    # As 3 verificações abaixo impedem uma reserva inválida: saída antes da entrada, sem pessoas ou acima da capacidade.
     def __init__(self, id: int, hospede: Hospede, quarto: Quarto,
                  entrada: date, saida: date, pessoas: int,
                  diaria_contratada=None, status=StatusReserva.CONFIRMADA):
@@ -286,12 +324,15 @@ class Reserva:
         self.entrada = entrada
         self.saida = saida
         self.pessoas = int(pessoas)
+        # PREÇO CONTRATADO: copia a diária do quarto NESTE momento. Se o hotel mudar o preço depois, esta reserva não muda.
+        # 'A if condição else B' é um if em uma linha: usa o valor informado, ou a diária atual do quarto se não houver.
         self.diaria_contratada = dinheiro(quarto.diaria if diaria_contratada is None
                                           else diaria_contratada)
         self.status = status
         self.consumos: list[Consumo] = []   # composição
 
     # ---------------- cálculos ----------------
+    # Subtrair duas datas dá um 'timedelta'; .days é o número de dias. Ex.: 22/11 - 19/11 = 3 diárias.
     @property
     def qtd_diarias(self) -> int:
         return (self.saida - self.entrada).days
@@ -300,30 +341,41 @@ class Reserva:
     def valor_hospedagem(self) -> Decimal:
         return self.qtd_diarias * self.diaria_contratada
 
+    # sum(... for c in self.consumos) soma o subtotal de cada consumo da lista. O Decimal('0.00') é o ponto de partida da soma.
     @property
     def valor_consumos(self) -> Decimal:
         return sum((c.subtotal for c in self.consumos), Decimal("0.00"))
 
+    # TOTAL DA CONTA = hospedagem + consumos. Exemplo do roteiro: 540 + 60 = R$ 600,00.
     @property
     def total(self) -> Decimal:
         return self.valor_hospedagem + self.valor_consumos
 
     # ---------------- regras ----------------
+    # 'in' confere se o valor está dentro da tupla. Só reservas Confirmadas ou Em hospedagem seguram o quarto.
     @property
     def ativa(self) -> bool:
         """Reservas canceladas ou concluídas não bloqueiam o quarto."""
         return self.status in (StatusReserva.CONFIRMADA, StatusReserva.EM_HOSPEDAGEM)
 
+    # REGRA DE DATAS. Exemplo com uma reserva existente de 19/11 a 22/11:
+    #   nova 20/11 a 23/11 -> CONFLITA     (20 < 22 e 23 > 19)
+    #   nova 22/11 a 24/11 -> não conflita (22 < 22 é falso)
+    #   nova 17/11 a 19/11 -> não conflita (19 > 19 é falso)
     def conflita_com(self, entrada: date, saida: date) -> bool:
         """Há conflito se: nova entrada < saída existente E nova saída > entrada existente.
         A saída é exclusiva: quem sai dia 22 libera o quarto para quem entra dia 22."""
         return self.ativa and entrada < self.saida and saida > self.entrada
 
+    # Cada ação só é permitida numa certa situação (a reserva funciona como uma máquina de situações).
+    # Aqui: check-in só se estiver Confirmada. Se não estiver, 'raise' interrompe o método e a tela mostra a mensagem.
+    # Se estiver, muda o status para Em hospedagem.
     def check_in(self):
         if self.status != StatusReserva.CONFIRMADA:
             raise RegraNegocioErro("Check-in só é permitido em reserva confirmada.")
         self.status = StatusReserva.EM_HOSPEDAGEM
 
+    # COMPOSIÇÃO: o Consumo é criado aqui dentro e guardado na lista self.consumos desta reserva.
     def lancar_consumo(self, servico: Servico, quantidade: int) -> Consumo:
         if self.status != StatusReserva.EM_HOSPEDAGEM:
             raise RegraNegocioErro("Consumos só podem ser lançados durante a hospedagem.")
@@ -342,6 +394,7 @@ class Reserva:
             raise RegraNegocioErro("Somente reservas confirmadas podem ser canceladas.")
         self.status = StatusReserva.CANCELADA
 
+    # Monta o texto da conta (o recibo que aparece na tela). Cada linha é uma f-string: f'...{valor}...' troca {valor} pelo conteúdo.
     def extrato(self) -> str:
         """Texto da conta para mostrar na tela de fechamento."""
         linhas = [
@@ -379,6 +432,8 @@ class FechamentoCaixa:
 
     LARGURA = 42  # caracteres por linha do relatório (formato de cupom)
 
+    # O fechamento guarda: o número, quando foi feito e QUAIS reservas entraram nele.
+    # list(reservas) faz uma cópia da lista, para mudanças futuras não afetarem o fechamento.
     def __init__(self, numero: int, data_hora: datetime, reservas: list[Reserva]):
         self.numero = numero
         self.data_hora = data_hora
@@ -397,11 +452,13 @@ class FechamentoCaixa:
     def valor_consumos(self) -> Decimal:
         return sum((r.valor_consumos for r in self.reservas), Decimal("0.00"))
 
+    # Mesma ideia da Reserva: o total do caixa é a soma das hospedagens com os consumos de todas as reservas fechadas.
     @property
     def total(self) -> Decimal:
         return self.valor_hospedagem + self.valor_consumos
 
     # ---------------- relatório ----------------
+    # Monta o relatório no formato de cupom (42 colunas). ljust e center alinham o texto à esquerda e ao centro.
     def relatorio(self, nome_hotel: str = "Hotel") -> str:
         """Texto no formato de cupom, pronto para salvar em .txt ou imprimir."""
         L = self.LARGURA
@@ -443,6 +500,8 @@ class FechamentoCaixa:
 class Hotel:
     """Guarda todos os objetos e aplica as regras que envolvem várias reservas."""
 
+    # O Hotel guarda tudo em DICIONÁRIOS: self.hospedes[3] devolve o hóspede de id 3; self.quartos['101'] devolve o quarto 101.
+    # 'arquivo' é o caminho do JSON onde os dados são gravados. Sem arquivo (None), nada é gravado (útil nos testes).
     def __init__(self, nome: str = "Hotel", arquivo: str | None = None):
         self.nome = nome
         self.arquivo = arquivo
@@ -452,10 +511,12 @@ class Hotel:
         self.reservas: dict[int, Reserva] = {}
         self.fechamentos: list[FechamentoCaixa] = []
 
+    # Descobre o próximo número livre: o maior id existente + 1 (ou 1 se ainda não houver nenhum).
     def _proximo_id(self, colecao: dict) -> int:
         return max(colecao.keys(), default=0) + 1
 
     # ---------------- cadastros ----------------
+    # Padrão de TODOS os cadastros: 1) cria o objeto (o construtor valida)  2) confere duplicidade  3) guarda no dicionário  4) salva no JSON.
     def cadastrar_hospede(self, nome, documento, telefone="") -> Hospede:
         h = Hospede(self._proximo_id(self.hospedes), nome, documento, telefone)  # valida
         if any(outro.documento == h.documento for outro in self.hospedes.values()):
@@ -486,6 +547,8 @@ class Hotel:
         for r in reservas:
             del self.reservas[r.id]
 
+    # Só exclui se o hóspede não tiver reservas ativas ou concluídas (senão a conta ficaria sem dono).
+    # 'is' compara se é o MESMO objeto (não só igual). any(...) é True se pelo menos um item passa no teste.
     def excluir_hospede(self, hospede_id: int) -> Hospede:
         h = self.hospedes.get(hospede_id)
         if h is None:
@@ -523,16 +586,20 @@ class Hotel:
         return s
 
     # ---------------- disponibilidade e reservas ----------------
+    # Pergunta a CADA reserva deste quarto se ela conflita com as datas. Se alguma conflita, o quarto não está livre.
+    # 'not any(...)' lê-se: 'nenhuma conflita'.
     def quarto_livre(self, quarto: Quarto, entrada: date, saida: date) -> bool:
         return not any(r.quarto is quarto and r.conflita_com(entrada, saida)
                        for r in self.reservas.values())
 
+    # Lista só os quartos que comportam o grupo E estão livres no período (uma lista em uma linha com filtro).
     def quartos_disponiveis(self, entrada: date, saida: date, pessoas: int) -> list[Quarto]:
         if saida <= entrada:
             raise RegraNegocioErro("A data de saída deve ser posterior à entrada.")
         return [q for q in self.quartos.values()
                 if q.comporta(pessoas) and self.quarto_livre(q, entrada, saida)]
 
+    # O caminho completo de uma reserva: acha o hóspede e o quarto, confere o conflito de datas, cria a Reserva, guarda e salva.
     def reservar(self, hospede_id: int, numero_quarto: str,
                  entrada: date, saida: date, pessoas: int) -> Reserva:
         hospede = self.hospedes[hospede_id]
@@ -547,6 +614,7 @@ class Hotel:
         return r
 
     # ---------------- caixa ----------------
+    # 'fechadas' é um conjunto (set) com os ids das reservas que já entraram em algum fechamento. O caixa aberto é o resto.
     def reservas_caixa_aberto(self) -> list[Reserva]:
         """Hospedagens concluídas que ainda não entraram em nenhum fechamento."""
         fechadas = {r.id for f in self.fechamentos for r in f.reservas}
@@ -560,6 +628,7 @@ class Hotel:
     def ultimo_fechamento(self) -> FechamentoCaixa | None:
         return self.fechamentos[-1] if self.fechamentos else None
 
+    # Fecha o caixa: junta as reservas concluídas ainda não contadas num FechamentoCaixa. Não apaga nada, só registra.
     def fechar_caixa(self, agora: datetime | None = None) -> FechamentoCaixa:
         pendentes = self.reservas_caixa_aberto()
         if not pendentes:
@@ -571,6 +640,7 @@ class Hotel:
         return fechamento
 
     # ---------------- painel ----------------
+    # Usado no mapa de quartos do painel (Livre / Reservado / Ocupado).
     def situacao_quarto(self, quarto: Quarto, hoje: date | None = None) -> str:
         """'Ocupado' se há hóspede no quarto; 'Reservado' se há reserva para hoje; senão 'Livre'."""
         hoje = hoje or date.today()
@@ -584,6 +654,7 @@ class Hotel:
                 situacao = "Reservado"
         return situacao
 
+    # Junta os números do painel num dicionário. A tela só lê os resultados.
     def resumo(self, hoje: date | None = None) -> dict:
         hoje = hoje or date.today()
         ativas = [r for r in self.reservas.values() if r.ativa]
@@ -599,6 +670,7 @@ class Hotel:
         }
 
     # ---------------- persistência (JSON) ----------------
+    # SALVAR: transforma cada objeto em dicionário (para_dict) e grava tudo num arquivo JSON. É chamado a cada alteração.
     def salvar(self):
         if not self.arquivo:
             return
@@ -613,6 +685,9 @@ class Hotel:
         with open(self.arquivo, "w", encoding="utf-8") as f:
             json.dump(dados, f, ensure_ascii=False, indent=2)
 
+    # CARREGAR: faz o caminho inverso. Lê o JSON e recria os objetos NA ORDEM CERTA: primeiro hóspedes, quartos e serviços,
+    # depois as reservas (que dependem deles) e por fim consumos e fechamentos.
+    # 'cls' é a própria classe Hotel (por isso @classmethod: o método não precisa de um Hotel já criado).
     @classmethod
     def carregar(cls, arquivo: str) -> "Hotel":
         hotel = cls(arquivo=arquivo)
