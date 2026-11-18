@@ -11,10 +11,11 @@ Executar:         python app.py
 
 import os
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk, messagebox, filedialog
 
 import customtkinter as ctk
 
+from analise import Analise
 from modelos import (Hotel, RegraNegocioErro, StatusReserva, LIMITES,
                      mascara_documento, mascara_telefone,
                      ler_data, formatar_data, formatar_moeda)
@@ -199,6 +200,9 @@ class Pagina(ctk.CTkFrame):
             return None
         except (ValueError, KeyError) as e:
             messagebox.showwarning("Dados inválidos", f"Verifique os campos informados.\n({e})")
+            return None
+        except OSError as e:
+            messagebox.showwarning("Arquivo", f"Não foi possível ler ou gravar o arquivo.\n({e})")
             return None
         if sucesso:
             self.app.avisar(sucesso)
@@ -576,13 +580,188 @@ class PaginaHospedagem(Pagina):
 
 
 # ---------------------------------------------------------------------------
+# Análise de dados
+# ---------------------------------------------------------------------------
+
+def abreviar(valor) -> str:
+    """45210 -> '45,2 mil'"""
+    v = float(valor)
+    return f"{v / 1000:.1f}".replace(".", ",") + " mil" if v >= 1000 else f"{v:.0f}"
+
+
+class Grafico(tk.Canvas):
+    """Gráfico de barras desenhado direto no Canvas do Tkinter (sem bibliotecas extras)."""
+
+    def __init__(self, master, altura=150):
+        super().__init__(master, height=altura, highlightthickness=0, bd=0)
+        self.itens, self.horizontal = [], False
+        self.bind("<Configure>", lambda e: self.desenhar())
+
+    def mostrar(self, itens, horizontal=False):
+        """itens: lista de (rótulo, valor)"""
+        self.itens, self.horizontal = itens, horizontal
+        self.desenhar()
+
+    def desenhar(self):
+        escuro = ctk.get_appearance_mode() == "Dark"
+        fundo = CARTAO[1] if escuro else CARTAO[0]
+        suave, forte = ("#9ca3af", "#e5e7eb") if escuro else ("#6b7280", "#1f2937")
+        self.configure(bg=fundo)
+        self.delete("all")
+        largura, altura = self.winfo_width(), self.winfo_height()
+        if largura < 50:
+            return
+        if not self.itens:
+            self.create_text(largura / 2, altura / 2, text="Sem dados", fill=suave)
+            return
+        maior = max(float(v) for _, v in self.itens) or 1
+        n = len(self.itens)
+        letra = ("Segoe UI", 8)
+        if not self.horizontal:                                  # barras em pé
+            base, topo = altura - 22, 18
+            passo = largura / n
+            for i, (rotulo, valor) in enumerate(self.itens):
+                x0, x1 = i * passo + passo * 0.18, (i + 1) * passo - passo * 0.18
+                y0 = base - (base - topo) * float(valor) / maior
+                self.create_rectangle(x0, y0, x1, base, fill=AZUL, outline="")
+                self.create_text((x0 + x1) / 2, y0 - 8, text=abreviar(valor), fill=forte, font=letra)
+                self.create_text((x0 + x1) / 2, altura - 10, text=rotulo, fill=suave, font=letra)
+        else:                                                    # barras deitadas
+            esquerda, direita = 40, 64
+            passo = altura / n
+            for i, (rotulo, valor) in enumerate(self.itens):
+                y0, y1 = i * passo + passo * 0.18, (i + 1) * passo - passo * 0.18
+                x1 = esquerda + (largura - esquerda - direita) * float(valor) / maior
+                self.create_rectangle(esquerda, y0, x1, y1, fill="#8b5cf6", outline="")
+                self.create_text(esquerda - 6, (y0 + y1) / 2, text=rotulo, fill=forte, font=letra, anchor="e")
+                self.create_text(x1 + 6, (y0 + y1) / 2, text=abreviar(valor), fill=forte, font=letra, anchor="w")
+
+
+class PaginaAnalise(Pagina):
+    titulo = "Análise de dados"
+    subtitulo = "Indicadores calculados lendo o arquivo JSON do hotel"
+    EXEMPLO = os.path.join(os.path.dirname(os.path.abspath(__file__)), "dados_exemplo.json")
+
+    def __init__(self, master, app):
+        super().__init__(master, app)
+        self.fonte = "hotel"        # "hotel", "exemplo" ou o caminho de um arquivo escolhido
+        self.analise = None
+
+        barra = ctk.CTkFrame(self, fg_color="transparent")
+        barra.pack(fill="x", pady=(0, 10))
+        for texto, comando, cor in [("Dados do hotel", self.usar_hotel, AZUL),
+                                    ("Dados de exemplo (2026)", self.usar_exemplo, "#8b5cf6"),
+                                    ("Abrir arquivo JSON…", self.abrir_arquivo, "#6b7280"),
+                                    ("Exportar CSV (Excel)", self.exportar, VERDE)]:
+            ctk.CTkButton(barra, text=texto, command=comando, height=34, fg_color=cor,
+                          font=fonte(13, True), corner_radius=10).pack(side="left", padx=(0, 8))
+        self.origem = ctk.CTkLabel(barra, text="", font=fonte(12), text_color=TEXTO_SUAVE)
+        self.origem.pack(side="right")
+
+        linha = ctk.CTkFrame(self, fg_color="transparent")
+        linha.pack(fill="x")
+        self.numeros = {}
+        for i, (chave, rotulo, cor) in enumerate([("fat", "Faturamento", "#0ea5e9"),
+                                                  ("hosp", "Hospedagens concluídas", VERDE),
+                                                  ("ticket", "Ticket médio", AZUL),
+                                                  ("ocup", "Taxa de ocupação", "#8b5cf6"),
+                                                  ("cancel", "Cancelamentos", VERMELHO)]):
+            card = Cartao(linha)
+            card.grid(row=0, column=i, sticky="nsew", padx=(0 if i == 0 else 12, 0))
+            linha.columnconfigure(i, weight=1)
+            ctk.CTkFrame(card, height=4, fg_color=cor, corner_radius=2).pack(fill="x", padx=14, pady=(10, 0))
+            ctk.CTkLabel(card, text=rotulo, font=fonte(12), text_color=TEXTO_SUAVE).pack(anchor="w", padx=14, pady=(6, 0))
+            valor = ctk.CTkLabel(card, text="-", font=fonte(20, True))
+            valor.pack(anchor="w", padx=14, pady=(0, 10))
+            self.numeros[chave] = valor
+
+        graficos = ctk.CTkFrame(self, fg_color="transparent")
+        graficos.pack(fill="x", pady=12)
+        graficos.columnconfigure(0, weight=3, uniform="g")
+        graficos.columnconfigure(1, weight=2, uniform="g")
+        c1 = Cartao(graficos, "Faturamento por mês")
+        c1.grid(row=0, column=0, sticky="nsew", padx=(0, 12))
+        self.grafico_mes = Grafico(c1, 150)
+        self.grafico_mes.pack(fill="x", padx=14, pady=(0, 12))
+        c2 = Cartao(graficos, "Faturamento por quarto")
+        c2.grid(row=0, column=1, sticky="nsew")
+        self.grafico_quarto = Grafico(c2, 150)
+        self.grafico_quarto.pack(fill="x", padx=14, pady=(0, 12))
+
+        tabelas = ctk.CTkFrame(self, fg_color="transparent")
+        tabelas.pack(fill="both", expand=True)
+        tabelas.columnconfigure(0, weight=1, uniform="t")
+        tabelas.columnconfigure(1, weight=1, uniform="t")
+        t1 = Cartao(tabelas, "Serviços mais consumidos")
+        t1.grid(row=0, column=0, sticky="nsew", padx=(0, 12))
+        self.tabela_servicos = Tabela(t1, ("Serviço", "Qtd", "Valor"), (210, 60, 110), altura=4)
+        self.tabela_servicos.pack(fill="both", expand=True, padx=14, pady=(0, 12))
+        t2 = Cartao(tabelas, "Hóspedes que mais gastaram")
+        t2.grid(row=0, column=1, sticky="nsew")
+        self.tabela_hospedes = Tabela(t2, ("Hóspede", "Hospedagens", "Total gasto"), (175, 120, 110), altura=4)
+        self.tabela_hospedes.pack(fill="both", expand=True, padx=14, pady=(0, 12))
+
+    # ----- escolha da fonte dos dados -----
+    def usar_hotel(self):
+        self.fonte = "hotel"
+        self.atualizar()
+
+    def usar_exemplo(self):
+        self.fonte = "exemplo"
+        self.atualizar()
+
+    def abrir_arquivo(self):
+        caminho = filedialog.askopenfilename(title="Escolha um arquivo de dados do hotel",
+                                             filetypes=[("Arquivos JSON", "*.json"), ("Todos", "*.*")])
+        if caminho:
+            self.fonte = caminho
+            self.atualizar()
+
+    def exportar(self):
+        caminho = filedialog.asksaveasfilename(title="Exportar hospedagens concluídas",
+                                               defaultextension=".csv", initialfile="faturamento.csv",
+                                               filetypes=[("CSV (abre no Excel)", "*.csv")])
+        if caminho:
+            n = self.executar(lambda: self.analise.exportar_csv(caminho))
+            if n is not None:
+                self.app.avisar(f"{n} hospedagens exportadas")
+
+    def _carregar(self) -> Analise:
+        if self.fonte == "hotel":
+            return Analise(self.hotel, "Dados do hotel (ao vivo)")
+        return Analise.de_arquivo(self.EXEMPLO if self.fonte == "exemplo" else self.fonte)
+
+    def atualizar(self):
+        try:
+            self.analise = self._carregar()
+        except RegraNegocioErro as e:
+            messagebox.showwarning("Não foi possível abrir", str(e))
+            self.fonte = "hotel"
+            self.analise = self._carregar()
+        a = self.analise
+        self.origem.configure(text=f"Fonte: {a.origem}")
+        self.numeros["fat"].configure(text=formatar_moeda(a.faturamento_total()))
+        self.numeros["hosp"].configure(text=str(len(a.concluidas)))
+        self.numeros["ticket"].configure(text=formatar_moeda(a.ticket_medio()))
+        self.numeros["ocup"].configure(text=f"{a.taxa_ocupacao():.0f}%")
+        self.numeros["cancel"].configure(text=f"{a.taxa_cancelamento():.0f}%")
+        self.grafico_mes.mostrar(a.faturamento_por_mes())
+        self.grafico_quarto.mostrar(a.faturamento_por_quarto(), horizontal=True)
+        self.tabela_servicos.preencher([(i, (nome, qtd, formatar_moeda(valor)), None)
+                                        for i, (nome, qtd, valor) in enumerate(a.consumo_por_servico())])
+        self.tabela_hospedes.preencher([(i, (nome, n, formatar_moeda(total)), None)
+                                        for i, (nome, n, total) in enumerate(a.ranking_hospedes(8))])
+
+
+# ---------------------------------------------------------------------------
 # Janela principal
 # ---------------------------------------------------------------------------
 
 class Aplicacao(ctk.CTk):
     PAGINAS = [("◧  Painel", PaginaPainel), ("👤  Hóspedes", PaginaHospedes),
                ("🛏  Quartos", PaginaQuartos), ("🧺  Serviços", PaginaServicos),
-               ("📅  Reservas", PaginaReservas), ("🧾  Hospedagem", PaginaHospedagem)]
+               ("📅  Reservas", PaginaReservas), ("🧾  Hospedagem", PaginaHospedagem),
+               ("📊  Análise de dados", PaginaAnalise)]
 
     def __init__(self, hotel: Hotel):
         ctk.set_appearance_mode("light")
@@ -640,6 +819,7 @@ class Aplicacao(ctk.CTk):
         """Traz a página escolhida para a frente e atualiza seus dados."""
         for i, b in enumerate(self.botoes):
             b.configure(fg_color=AZUL if i == indice else "transparent")
+        self.indice_atual = indice
         pagina = self.paginas[indice]
         pagina.atualizar()
         pagina.tkraise()
@@ -657,6 +837,7 @@ class Aplicacao(ctk.CTk):
         escuro = bool(self.tema.get())
         ctk.set_appearance_mode("dark" if escuro else "light")
         estilizar_tabelas(escuro)
+        self.paginas[self.indice_atual].atualizar()  # redesenha os gráficos com as cores do tema
 
 
 if __name__ == "__main__":

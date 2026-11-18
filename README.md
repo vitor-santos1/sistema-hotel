@@ -44,8 +44,12 @@ Os dados ficam em `dados_hotel.json`, criado na primeira execução com 4 quarto
 |---|---|
 | `modelos.py` | Classes do sistema: `Hospede`, `Quarto`, `Servico`, `Consumo`, `Reserva` e `Hotel`. Contém as regras, os cálculos e a gravação em JSON |
 | `app.py` | Telas com visual moderno (CustomTkinter) |
-| `app_classico.py` | As mesmas telas com Tkinter puro (versão reserva) |
+| `analise.py` | Classe `Analise`: lê um arquivo JSON e calcula indicadores (faturamento, ocupação, ranking...) |
+| `gerar_dados_exemplo.py` | Gera o `dados_exemplo.json` (um ano fictício de movimento, 560 reservas) |
+| `dados_exemplo.json` | Dados de exemplo usados na tela de Análise de dados |
+| `app_classico.py` | As telas básicas com Tkinter puro (versão reserva, sem a Análise de dados) |
 | `tests/teste_regras.py` | Executa o roteiro da apresentação e confere os resultados |
+| `tests/teste_analise.py` | Confere os cálculos da análise com números conhecidos |
 | `instalar.bat` / `executar.bat` | Instalação e execução com dois cliques no Windows |
 | `docs/prints/` | Capturas de tela |
 
@@ -92,6 +96,22 @@ Cada tela (Hóspedes, Quartos, Serviços) tem o botão **Excluir selecionado**, 
 - Reservas **canceladas** são apagadas junto, porque não têm valor financeiro.
 - Não exclui serviço que já foi lançado em alguma hospedagem.
 
+## 📊 Análise de dados (leitura de JSON)
+
+A tela **Análise de dados** usa a classe `Analise` (`analise.py`) para **ler um arquivo JSON** e calcular:
+faturamento total, por mês e por quarto; ticket médio; taxa de ocupação; taxa de cancelamento;
+serviços mais consumidos e ranking de hóspedes. Os gráficos são desenhados no `Canvas` do Tkinter.
+
+- **Dados do hotel**: analisa o que está cadastrado no sistema agora.
+- **Dados de exemplo (2026)**: lê o `dados_exemplo.json`, com 560 reservas de janeiro a novembro.
+- **Abrir arquivo JSON…**: analisa qualquer arquivo no mesmo formato. Arquivo inválido gera um aviso, não um erro.
+- **Exportar CSV (Excel)**: grava as hospedagens concluídas em um arquivo que abre no Excel.
+
+A análise só **lê**: nunca altera nem grava o arquivo. Os valores vêm dos cálculos que já existem
+nas classes (`Reserva.total`, `Consumo.subtotal`...), usando `Decimal`.
+
+Para gerar o arquivo de exemplo de novo: `python gerar_dados_exemplo.py`.
+
 ## 🎤 Roteiro da demonstração
 
 1. **Painel**: mostrar o mapa de quartos (verde = livre, amarelo = reservado, vermelho = ocupado).
@@ -101,6 +121,7 @@ Cada tela (Hóspedes, Quartos, Serviços) tem o botão **Excluir selecionado**, 
 5. **Hospedagem**: selecionar a reserva → check-in.
 6. Lançar 4 × Água (frigobar) e 1 × Lavanderia.
 7. Conferir a conta: 3 × R$ 180,00 + R$ 40,00 + R$ 20,00 = **R$ 600,00** → confirmar checkout.
-8. Extra: em **Quartos**, mudar a diária do 101. As reservas já feitas mantêm R$ 180,00.
+8. **Análise de dados**: clicar em "Dados de exemplo (2026)" e mostrar os gráficos. Depois, "Dados do hotel" mostra o que acabou de ser cadastrado. Exportar o CSV e abrir no Excel.
+9. Extra: em **Quartos**, mudar a diária do 101. As reservas já feitas mantêm R$ 180,00.
 
 ![Checkout](docs/prints/hospedagem.png)

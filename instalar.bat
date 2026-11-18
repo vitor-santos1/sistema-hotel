@@ -22,6 +22,7 @@ echo [2/3] Instalando dependencias ...
 
 echo [3/3] Testando as regras do sistema ...
 .venv\Scripts\python tests\teste_regras.py || goto erro
+.venv\Scripts\python tests\teste_analise.py || goto erro
 
 echo.
 echo Instalacao concluida! Para abrir o sistema, de dois cliques em executar.bat

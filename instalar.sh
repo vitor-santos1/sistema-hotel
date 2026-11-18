@@ -8,4 +8,5 @@ PY=${PYTHON:-python3}
 .venv/bin/python -m pip install --upgrade pip -q
 .venv/bin/python -m pip install -r requirements.txt
 .venv/bin/python tests/teste_regras.py
+.venv/bin/python tests/teste_analise.py
 echo "Instalação concluída! Rode ./executar.sh"
