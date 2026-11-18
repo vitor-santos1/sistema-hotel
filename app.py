@@ -761,7 +761,8 @@ class Grafico(tk.Canvas):
             self.create_line(0, base, largura, base, fill=linha)
             passo = largura / n
             for i, (rotulo, valor) in enumerate(self.itens):
-                x0, x1 = i * passo + passo * 0.22, (i + 1) * passo - passo * 0.22
+                meio, meia = (i + 0.5) * passo, min(passo * 0.28, 28)  # barra de no máximo 56 px
+                x0, x1 = meio - meia, meio + meia
                 y0 = base - (base - topo) * float(valor) / maior
                 self.create_rectangle(x0, y0, x1, base, fill=barra, outline="")
                 self.create_text((x0 + x1) / 2, y0 - 8, text=abreviar(valor), fill=forte, font=letra)
@@ -771,7 +772,8 @@ class Grafico(tk.Canvas):
             self.create_line(esquerda, 0, esquerda, altura, fill=linha)
             passo = altura / n
             for i, (rotulo, valor) in enumerate(self.itens):
-                y0, y1 = i * passo + passo * 0.22, (i + 1) * passo - passo * 0.22
+                meio, meia = (i + 0.5) * passo, min(passo * 0.28, 11)  # barra de no máximo 22 px
+                y0, y1 = meio - meia, meio + meia
                 x1 = esquerda + (largura - esquerda - direita) * float(valor) / maior
                 self.create_rectangle(esquerda, y0, x1, y1, fill=barra, outline="")
                 self.create_text(esquerda - 6, (y0 + y1) / 2, text=rotulo, fill=suave, font=letra, anchor="e")
@@ -781,23 +783,16 @@ class Grafico(tk.Canvas):
 class PaginaAnalise(Pagina):
     titulo = "Análise de dados"
     subtitulo = "Indicadores calculados a partir do arquivo JSON"
-    EXEMPLO = os.path.join(PASTA, "dados_exemplo.json")
-    FONTES = {"Dados do hotel": "hotel", "Exemplo 2026": "exemplo"}
 
     def __init__(self, master, app):
         super().__init__(master, app)
-        self.fonte = "hotel"        # "hotel", "exemplo" ou o caminho de um arquivo escolhido
+        self.fonte = "hotel"        # "hotel" ou o caminho de um arquivo JSON escolhido
         self.analise = None
 
         botao(self.acoes, "Exportar CSV", self.exportar, "secundario", largura=110).pack(side="right")
         botao(self.acoes, "Abrir JSON…", self.abrir_arquivo, "secundario", largura=110).pack(side="right", padx=(0, 8))
-        self.seletor = ctk.CTkSegmentedButton(
-            self.acoes, values=list(self.FONTES), command=lambda v: self._trocar_fonte(self.FONTES[v]),
-            height=32, corner_radius=6, font=fonte(12), fg_color=BORDA, selected_color=("#dce8f6", "#2c4258"),
-            selected_hover_color=("#cfdff2", "#34506a"), unselected_color=SUPERFICIE, unselected_hover_color=REALCE,
-            text_color=TEXTO)
-        self.seletor.pack(side="right", padx=(0, 8))
-        self.seletor.set("Dados do hotel")
+        # só aparece quando outro arquivo está aberto
+        self.botao_voltar = botao(self.acoes, "Voltar aos dados do hotel", self.usar_hotel, "secundario", largura=190)
 
         linha = ctk.CTkFrame(self, fg_color="transparent")
         linha.pack(fill="x")
@@ -845,9 +840,6 @@ class PaginaAnalise(Pagina):
     def usar_hotel(self):
         self._trocar_fonte("hotel")
 
-    def usar_exemplo(self):
-        self._trocar_fonte("exemplo")
-
     def abrir_arquivo(self):
         caminho = filedialog.askopenfilename(title="Escolha um arquivo de dados do hotel",
                                              filetypes=[("Arquivos JSON", "*.json"), ("Todos", "*.*")])
@@ -866,7 +858,7 @@ class PaginaAnalise(Pagina):
     def _carregar(self) -> Analise:
         if self.fonte == "hotel":
             return Analise(self.hotel, "Dados do hotel")
-        return Analise.de_arquivo(self.EXEMPLO if self.fonte == "exemplo" else self.fonte)
+        return Analise.de_arquivo(self.fonte)
 
     def atualizar(self):
         try:
@@ -875,8 +867,10 @@ class PaginaAnalise(Pagina):
             messagebox.showwarning("Não foi possível abrir", str(e))
             self.fonte = "hotel"
             self.analise = self._carregar()
-        # o seletor mostra a fonte atual (nenhum botão marcado quando é um arquivo escolhido)
-        self.seletor.set({"hotel": "Dados do hotel", "exemplo": "Exemplo 2026"}.get(self.fonte, ""))
+        if self.fonte == "hotel":
+            self.botao_voltar.pack_forget()
+        else:
+            self.botao_voltar.pack(side="right", padx=(0, 8))
         a = self.analise
         self.app.mostrar_fonte(a.origem)
         periodo = a.periodo()

@@ -46,7 +46,7 @@ Os dados ficam em `dados_hotel.json`, criado na primeira execução com 4 quarto
 | `app.py` | Telas com visual moderno (CustomTkinter) |
 | `analise.py` | Classe `Analise`: lê um arquivo JSON e calcula indicadores (faturamento, ocupação, ranking...) |
 | `gerar_dados_exemplo.py` | Gera o `dados_exemplo.json` (um ano fictício de movimento, 557 reservas) |
-| `dados_exemplo.json` | Dados de exemplo usados na tela de Análise de dados |
+| `dados_exemplo.json` | Dados fictícios usados pelos testes (opcional na Análise, via "Abrir JSON…") |
 | `app_classico.py` | As telas básicas com Tkinter puro (versão reserva, sem a Análise de dados) |
 | `tests/teste_regras.py` | Executa o roteiro da apresentação e confere os resultados |
 | `tests/teste_analise.py` | Confere os cálculos da análise com números conhecidos |
@@ -112,15 +112,17 @@ A tela **Análise de dados** usa a classe `Analise` (`analise.py`) para **ler um
 faturamento total, por mês e por quarto; ticket médio; taxa de ocupação; taxa de cancelamento;
 serviços mais consumidos e ranking de hóspedes. Os gráficos são desenhados no `Canvas` do Tkinter.
 
-- **Dados do hotel**: analisa o que está cadastrado no sistema agora.
-- **Exemplo 2026**: lê o `dados_exemplo.json`, com 557 reservas de janeiro a novembro.
-- **Abrir JSON…**: analisa qualquer arquivo no mesmo formato. Arquivo inválido gera um aviso, não um erro.
+- Ao abrir a tela, ela analisa **os dados do hotel** (o que está cadastrado no sistema).
+- **Abrir JSON…**: analisa outro arquivo no mesmo formato. Arquivo inválido gera um aviso, não um erro.
+  O botão **Voltar aos dados do hotel** aparece enquanto outro arquivo estiver aberto.
 - **Exportar CSV**: grava as hospedagens concluídas em um arquivo que abre no Excel.
 
 A análise só **lê**: nunca altera nem grava o arquivo. Os valores vêm dos cálculos que já existem
 nas classes (`Reserva.total`, `Consumo.subtotal`...), usando `Decimal`.
 
-Para gerar o arquivo de exemplo de novo: `python gerar_dados_exemplo.py`.
+O `dados_exemplo.json` (557 reservas fictícias de 2026) **não aparece no sistema**: ele é usado
+pelos testes e pode ser aberto pelo botão **Abrir JSON…** se quiserem mostrar gráficos com mais dados.
+Para gerá-lo de novo: `python gerar_dados_exemplo.py`.
 
 ## 🎤 Roteiro da demonstração
 
@@ -132,7 +134,7 @@ Para gerar o arquivo de exemplo de novo: `python gerar_dados_exemplo.py`.
 6. Lançar 4 × Água (frigobar) e 1 × Lavanderia.
 7. Conferir a conta: 3 × R$ 180,00 + R$ 40,00 + R$ 20,00 = **R$ 600,00** → confirmar checkout.
 8. **Painel**: o caixa aberto mostra R$ 600,00. Clicar em **Fechar caixa**: aparece o relatório e o caixa volta a R$ 0,00.
-9. **Análise de dados**: clicar em "Exemplo 2026" e mostrar os gráficos. Depois, "Dados do hotel" mostra o que acabou de ser cadastrado. Exportar o CSV e abrir no Excel.
+9. **Análise de dados**: mostrar os indicadores da hospedagem que acabou de ser feita. Exportar o CSV e abrir no Excel.
 10. Extra: em **Quartos**, mudar a diária do 101. As reservas já feitas mantêm R$ 180,00.
 
 ![Checkout](docs/prints/hospedagem.png)
