@@ -91,14 +91,22 @@ def limpar_documento(documento: str) -> str:
     return limpo
 
 
-def formatar_documento(documento: str) -> str:
-    """12345678900 -> 123.456.789-00 (CPF);  123456789 -> 12.345.678-9 (RG de 9)."""
-    d = documento
-    if len(d) == 11 and d.isdigit():
-        return f"{d[:3]}.{d[3:6]}.{d[6:9]}-{d[9:]}"
-    if len(d) == 9:
-        return f"{d[:2]}.{d[2:5]}.{d[5:8]}-{d[8]}"
-    return d
+def mascara_documento(texto: str) -> str:
+    """Formata enquanto digita: 12345678900 -> 123.456.789-00 (o RG pode terminar em X)."""
+    t = [c for c in str(texto).upper() if c.isalnum()]
+    digitos = "".join(c for c in t if c.isdigit())[:11]
+    corpo = digitos + ("X" if t and t[-1] == "X" and len(digitos) in (7, 8) else "")
+    resultado = corpo[:3]
+    if corpo[3:6]:
+        resultado += "." + corpo[3:6]
+    if corpo[6:9]:
+        resultado += "." + corpo[6:9]
+    if corpo[9:11]:
+        resultado += "-" + corpo[9:11]
+    return resultado
+
+
+formatar_documento = mascara_documento  # mesma regra para digitar e para mostrar na tabela
 
 
 def limpar_telefone(telefone: str) -> str:
@@ -111,13 +119,16 @@ def limpar_telefone(telefone: str) -> str:
     return digitos
 
 
-def formatar_telefone(telefone: str) -> str:
-    """11999990000 -> (11) 99999-0000"""
-    if len(telefone) == 11:
-        return f"({telefone[:2]}) {telefone[2:7]}-{telefone[7:]}"
-    if len(telefone) == 10:
-        return f"({telefone[:2]}) {telefone[2:6]}-{telefone[6:]}"
-    return telefone
+def mascara_telefone(texto: str) -> str:
+    """Formata enquanto digita: 11999990000 -> (11) 99999-0000  |  1133334444 -> (11) 3333-4444"""
+    d = "".join(c for c in str(texto) if c.isdigit())[:11]
+    if len(d) <= 2:
+        return f"({d}" if d else ""
+    corte = 6 if len(d) <= 10 else 7  # fixo: 4+4 dígitos; celular: 5+4
+    return f"({d[:2]}) {d[2:corte]}" + (f"-{d[corte:]}" if d[corte:] else "")
+
+
+formatar_telefone = mascara_telefone
 
 
 def validar_tamanho(texto: str, campo: str, rotulo: str, minimo: int = 1) -> str:

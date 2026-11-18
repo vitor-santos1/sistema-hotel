@@ -16,6 +16,7 @@ from tkinter import ttk, messagebox
 import customtkinter as ctk
 
 from modelos import (Hotel, RegraNegocioErro, StatusReserva, LIMITES,
+                     mascara_documento, mascara_telefone,
                      ler_data, formatar_data, formatar_moeda)
 
 ARQUIVO_DADOS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "dados_hotel.json")
@@ -96,11 +97,15 @@ class Cartao(ctk.CTkFrame):
             ctk.CTkLabel(self, text=titulo, font=fonte(15, True)).pack(anchor="w", padx=18, pady=(14, 6))
 
 
-def limitar_entrada(entrada, maximo, permitido=None):
-    """Impede digitar além do limite e (opcionalmente) caracteres não permitidos."""
+def limitar_entrada(entrada, maximo, permitido=None, formatador=None):
+    """Impede digitar além do limite e caracteres não permitidos.
+    Com 'formatador', também aplica a máscara enquanto a pessoa digita (CPF, telefone)."""
     def corrigir(_evento=None):
         atual = entrada.get()
-        novo = "".join(c for c in atual if permitido(c)) if permitido else atual
+        if formatador:
+            novo = formatador(atual)
+        else:
+            novo = "".join(c for c in atual if permitido(c)) if permitido else atual
         novo = novo[:maximo]
         if novo != atual:
             entrada.delete(0, "end")
@@ -119,13 +124,13 @@ class Formulario(ctk.CTkFrame):
         super().__init__(master, fg_color="transparent")
         self.linha = 0
 
-    def campo(self, rotulo, exemplo="", largura=240, limite=None, permitido=None):
+    def campo(self, rotulo, exemplo="", largura=240, limite=None, permitido=None, formatador=None):
         ctk.CTkLabel(self, text=rotulo, font=fonte(13), text_color=TEXTO_SUAVE).grid(
             row=self.linha, column=0, sticky="w", pady=6, padx=(0, 12))
         entrada = ctk.CTkEntry(self, width=largura, height=36, placeholder_text=exemplo)
         entrada.grid(row=self.linha, column=1, sticky="w", pady=6)
         if limite:
-            limitar_entrada(entrada, limite, permitido)
+            limitar_entrada(entrada, limite, permitido, formatador)
         self.linha += 1
         return entrada
 
@@ -274,9 +279,9 @@ class PaginaHospedes(Pagina):
         f.pack(padx=18, pady=(0, 18))
         self.nome = f.campo("Nome", "Maria Silva", limite=LIMITES["nome"])
         self.doc = f.campo("Documento", "CPF (11 dígitos) ou RG", limite=LIMITES["documento"],
-                           permitido=lambda c: c.isdigit() or c in ".-xX")
+                           formatador=mascara_documento)
         self.tel = f.campo("Telefone", "(11) 99999-0000", limite=LIMITES["telefone"],
-                           permitido=lambda c: c.isdigit() or c in " ()-")
+                           formatador=mascara_telefone)
         f.botao("Cadastrar hóspede", self.cadastrar)
 
         lista = Cartao(self, "Hóspedes cadastrados")

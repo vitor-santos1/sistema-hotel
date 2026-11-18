@@ -83,7 +83,8 @@ Hospede ──1──┐                 ┌──1── Quarto
 | Quarto | Número até 6 caracteres, categoria até 20, capacidade de 1 a 10 |
 | Serviço | Descrição de 2 a 40 caracteres, preço não negativo |
 
-Nas telas, os campos também **impedem digitar além do limite** (função `limitar_entrada`).
+Nas telas, os campos também **impedem digitar além do limite** e **formatam enquanto a pessoa digita**
+(`mascara_documento` → `123.456.789-00` e `mascara_telefone` → `(11) 99999-0000`), usando a função `limitar_entrada`.
 
 ### Exclusão de cadastros
 Cada tela (Hóspedes, Quartos, Serviços) tem o botão **Excluir selecionado**, que chama `Hotel.excluir_hospede`, `excluir_quarto` e `excluir_servico`.

@@ -12,6 +12,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 
 from modelos import (Hotel, RegraNegocioErro, StatusReserva, LIMITES,
+                     mascara_documento, mascara_telefone,
                      ler_data, formatar_data, formatar_moeda)
 
 ARQUIVO_DADOS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "dados_hotel.json")
@@ -47,11 +48,15 @@ class Tabela(ttk.Frame):
         return sel[0] if sel else None
 
 
-def limitar_entrada(entrada, maximo, permitido=None):
-    """Impede digitar além do limite e (opcionalmente) caracteres não permitidos."""
+def limitar_entrada(entrada, maximo, permitido=None, formatador=None):
+    """Impede digitar além do limite e caracteres não permitidos.
+    Com 'formatador', também aplica a máscara enquanto a pessoa digita (CPF, telefone)."""
     def corrigir(_evento=None):
         atual = entrada.get()
-        novo = "".join(c for c in atual if permitido(c)) if permitido else atual
+        if formatador:
+            novo = formatador(atual)
+        else:
+            novo = "".join(c for c in atual if permitido(c)) if permitido else atual
         novo = novo[:maximo]
         if novo != atual:
             entrada.delete(0, "end")
@@ -59,12 +64,12 @@ def limitar_entrada(entrada, maximo, permitido=None):
     entrada.bind("<KeyRelease>", corrigir, add="+")
 
 
-def campo(master, rotulo, linha, largura=25, coluna=0, limite=None, permitido=None):
+def campo(master, rotulo, linha, largura=25, coluna=0, limite=None, permitido=None, formatador=None):
     ttk.Label(master, text=rotulo).grid(row=linha, column=coluna, sticky="w", padx=4, pady=3)
     entrada = ttk.Entry(master, width=largura)
     entrada.grid(row=linha, column=coluna + 1, sticky="w", padx=4, pady=3)
     if limite:
-        limitar_entrada(entrada, limite, permitido)
+        limitar_entrada(entrada, limite, permitido, formatador)
     return entrada
 
 
@@ -152,9 +157,9 @@ class AbaHospedes(Aba):
         form.pack(fill="x")
         self.nome = campo(form, "Nome:", 0, 35, limite=LIMITES["nome"])
         self.doc = campo(form, "Documento (CPF 11 dígitos / RG):", 1, limite=LIMITES["documento"],
-                         permitido=lambda c: c.isdigit() or c in ".-xX")
+                         formatador=mascara_documento)
         self.tel = campo(form, "Telefone (com DDD):", 2, limite=LIMITES["telefone"],
-                         permitido=lambda c: c.isdigit() or c in " ()-")
+                         formatador=mascara_telefone)
         ttk.Button(form, text="Cadastrar", style="Accent.TButton", command=self.cadastrar).grid(row=3, column=1, sticky="w", padx=4, pady=6)
 
         self.tabela = Tabela(self, ("ID", "Nome", "Documento", "Telefone"), (50, 260, 160, 140))
