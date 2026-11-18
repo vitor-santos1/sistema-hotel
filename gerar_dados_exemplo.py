@@ -41,13 +41,14 @@ def gerar(caminho: str = ARQUIVO) -> Hotel:
     for descricao, preco in SERVICOS:
         hotel.cadastrar_servico(descricao, preco)
 
-    hospedes, documentos = [], set()
+    hospedes, documentos, nomes = [], set(), set()
     while len(hospedes) < 45:
         doc = "".join(rnd.choice("0123456789") for _ in range(11))
-        if doc in documentos:
+        nome = f"{rnd.choice(PRIMEIROS)} {rnd.choice(SOBRENOMES)}"
+        if doc in documentos or nome in nomes:  # sem nomes repetidos, para o ranking não confundir
             continue
         documentos.add(doc)
-        nome = f"{rnd.choice(PRIMEIROS)} {rnd.choice(SOBRENOMES)}"
+        nomes.add(nome)
         hospedes.append(hotel.cadastrar_hospede(nome, doc, "119" + "".join(rnd.choice("0123456789") for _ in range(8))))
     pesos = [1 / (i + 1) ** 0.25 for i in range(len(hospedes))]  # alguns hóspedes voltam mais vezes
 

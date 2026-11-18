@@ -106,5 +106,26 @@ hotel.excluir_quarto("500")
 assert "500" not in hotel.quartos
 deve_falhar(hotel.excluir_hospede, 999)
 
+# ---------------- fechamento de caixa ----------------
+from datetime import datetime
+import tempfile, os
+assert hotel.faturamento_caixa_aberto() == Decimal("600.00")         # a reserva do roteiro
+f1 = hotel.fechar_caixa(datetime(2026, 11, 19, 22, 0))
+assert f1.numero == 1 and f1.quantidade == 1 and f1.total == Decimal("600.00")
+assert f1.valor_hospedagem == Decimal("540.00") and f1.valor_consumos == Decimal("60.00")
+assert hotel.faturamento_caixa_aberto() == Decimal("0.00")           # painel volta a zero
+assert hotel.resumo()["faturamento"] == Decimal("0.00")
+deve_falhar(hotel.fechar_caixa)                                       # nada novo para fechar
+assert "TOTAL:" in f1.relatorio("Hotel Teste") and "R$ 600,00" in f1.relatorio()
+pasta = tempfile.mkdtemp()
+caminho = f1.salvar_relatorio(pasta, "Hotel Teste")
+assert os.path.basename(caminho) == "caixa_001.txt" and "FECHAMENTO DE CAIXA" in open(caminho, encoding="utf-8").read()
+# o fechamento vai para o JSON e volta igual
+hotel.arquivo = os.path.join(pasta, "d.json"); hotel.salvar()
+de_novo = Hotel.carregar(hotel.arquivo)
+assert len(de_novo.fechamentos) == 1 and de_novo.ultimo_fechamento.total == Decimal("600.00")
+assert de_novo.faturamento_caixa_aberto() == Decimal("0.00")
+hotel.arquivo = None
+
 print(r.extrato())
 print("\nTodos os testes passaram!")

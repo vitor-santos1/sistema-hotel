@@ -45,7 +45,7 @@ Os dados ficam em `dados_hotel.json`, criado na primeira execução com 4 quarto
 | `modelos.py` | Classes do sistema: `Hospede`, `Quarto`, `Servico`, `Consumo`, `Reserva` e `Hotel`. Contém as regras, os cálculos e a gravação em JSON |
 | `app.py` | Telas com visual moderno (CustomTkinter) |
 | `analise.py` | Classe `Analise`: lê um arquivo JSON e calcula indicadores (faturamento, ocupação, ranking...) |
-| `gerar_dados_exemplo.py` | Gera o `dados_exemplo.json` (um ano fictício de movimento, 560 reservas) |
+| `gerar_dados_exemplo.py` | Gera o `dados_exemplo.json` (um ano fictício de movimento, 557 reservas) |
 | `dados_exemplo.json` | Dados de exemplo usados na tela de Análise de dados |
 | `app_classico.py` | As telas básicas com Tkinter puro (versão reserva, sem a Análise de dados) |
 | `tests/teste_regras.py` | Executa o roteiro da apresentação e confere os resultados |
@@ -64,9 +64,10 @@ Hospede ──1──┐                 ┌──1── Quarto
 
 - **Associação**: `Reserva` referencia um `Hospede` e um `Quarto`.
 - **Composição**: `Reserva` contém a lista dos seus `Consumo`.
-- **Cálculos nas classes**: `Consumo.subtotal`, `Reserva.qtd_diarias`, `Reserva.valor_hospedagem`, `Reserva.total`.
+- **Cálculos nas classes**: `Consumo.subtotal`, `Reserva.qtd_diarias`, `Reserva.valor_hospedagem`, `Reserva.total`, `FechamentoCaixa.total`.
+- **Fechamento de caixa**: `FechamentoCaixa` reúne as hospedagens concluídas desde o fechamento anterior.
 - **Encapsulamento**: `Quarto.diaria` é uma `@property` que valida o valor.
-- **Herança**: cada tela herda de `Pagina`. `Cartao`, `Formulario` e `Tabela` são componentes reutilizáveis.
+- **Herança**: cada tela herda de `Pagina`; `Indicador` herda de `Cartao`. `Cartao`, `Formulario`, `Tabela` e `Grafico` são componentes reutilizáveis.
 - **Separação**: as telas só chamam os métodos das classes. Toda regra fica em `modelos.py`.
 
 ### Regras de negócio
@@ -96,6 +97,15 @@ Cada tela (Hóspedes, Quartos, Serviços) tem o botão **Excluir selecionado**, 
 - Reservas **canceladas** são apagadas junto, porque não têm valor financeiro.
 - Não exclui serviço que já foi lançado em alguma hospedagem.
 
+### Fechamento de caixa
+O botão **Fechar caixa** (no Painel) chama `Hotel.fechar_caixa()`:
+- reúne as hospedagens concluídas que ainda não entraram em nenhum fechamento;
+- o indicador **Caixa aberto** do painel volta a R$ 0,00;
+- grava o relatório em `fechamentos/caixa_001.txt`, no formato de cupom;
+- **nada é apagado**: o histórico completo continua na Análise de dados.
+
+Não dá para fechar um caixa vazio. Os fechamentos ficam salvos no `dados_hotel.json`.
+
 ## 📊 Análise de dados (leitura de JSON)
 
 A tela **Análise de dados** usa a classe `Analise` (`analise.py`) para **ler um arquivo JSON** e calcular:
@@ -103,9 +113,9 @@ faturamento total, por mês e por quarto; ticket médio; taxa de ocupação; tax
 serviços mais consumidos e ranking de hóspedes. Os gráficos são desenhados no `Canvas` do Tkinter.
 
 - **Dados do hotel**: analisa o que está cadastrado no sistema agora.
-- **Dados de exemplo (2026)**: lê o `dados_exemplo.json`, com 560 reservas de janeiro a novembro.
-- **Abrir arquivo JSON…**: analisa qualquer arquivo no mesmo formato. Arquivo inválido gera um aviso, não um erro.
-- **Exportar CSV (Excel)**: grava as hospedagens concluídas em um arquivo que abre no Excel.
+- **Exemplo 2026**: lê o `dados_exemplo.json`, com 557 reservas de janeiro a novembro.
+- **Abrir JSON…**: analisa qualquer arquivo no mesmo formato. Arquivo inválido gera um aviso, não um erro.
+- **Exportar CSV**: grava as hospedagens concluídas em um arquivo que abre no Excel.
 
 A análise só **lê**: nunca altera nem grava o arquivo. Os valores vêm dos cálculos que já existem
 nas classes (`Reserva.total`, `Consumo.subtotal`...), usando `Decimal`.
@@ -121,7 +131,8 @@ Para gerar o arquivo de exemplo de novo: `python gerar_dados_exemplo.py`.
 5. **Hospedagem**: selecionar a reserva → check-in.
 6. Lançar 4 × Água (frigobar) e 1 × Lavanderia.
 7. Conferir a conta: 3 × R$ 180,00 + R$ 40,00 + R$ 20,00 = **R$ 600,00** → confirmar checkout.
-8. **Análise de dados**: clicar em "Dados de exemplo (2026)" e mostrar os gráficos. Depois, "Dados do hotel" mostra o que acabou de ser cadastrado. Exportar o CSV e abrir no Excel.
-9. Extra: em **Quartos**, mudar a diária do 101. As reservas já feitas mantêm R$ 180,00.
+8. **Painel**: o caixa aberto mostra R$ 600,00. Clicar em **Fechar caixa**: aparece o relatório e o caixa volta a R$ 0,00.
+9. **Análise de dados**: clicar em "Exemplo 2026" e mostrar os gráficos. Depois, "Dados do hotel" mostra o que acabou de ser cadastrado. Exportar o CSV e abrir no Excel.
+10. Extra: em **Quartos**, mudar a diária do 101. As reservas já feitas mantêm R$ 180,00.
 
 ![Checkout](docs/prints/hospedagem.png)

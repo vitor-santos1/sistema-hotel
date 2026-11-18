@@ -368,6 +368,72 @@ class Reserva:
                 "consumos": [c.para_dict() for c in self.consumos]}
 
 
+class FechamentoCaixa:
+    """Fechamento de caixa: reúne as hospedagens concluídas desde o fechamento anterior.
+
+    O faturamento não é apagado. Ele fica registrado no fechamento, e o painel passa a
+    contar do zero a partir dele. O histórico completo continua na Análise de dados.
+    """
+
+    LARGURA = 42  # caracteres por linha do relatório (formato de cupom)
+
+    def __init__(self, numero: int, data_hora: datetime, reservas: list[Reserva]):
+        self.numero = numero
+        self.data_hora = data_hora
+        self.reservas = list(reservas)
+
+    # ---------------- cálculos ----------------
+    @property
+    def quantidade(self) -> int:
+        return len(self.reservas)
+
+    @property
+    def valor_hospedagem(self) -> Decimal:
+        return sum((r.valor_hospedagem for r in self.reservas), Decimal("0.00"))
+
+    @property
+    def valor_consumos(self) -> Decimal:
+        return sum((r.valor_consumos for r in self.reservas), Decimal("0.00"))
+
+    @property
+    def total(self) -> Decimal:
+        return self.valor_hospedagem + self.valor_consumos
+
+    # ---------------- relatório ----------------
+    def relatorio(self, nome_hotel: str = "Hotel") -> str:
+        """Texto no formato de cupom, pronto para salvar em .txt ou imprimir."""
+        L = self.LARGURA
+
+        def linha(esquerda: str, direita: str) -> str:
+            return esquerda[:L - len(direita) - 1].ljust(L - len(direita)) + direita
+
+        texto = ["=" * L, nome_hotel.upper().center(L),
+                 f"FECHAMENTO DE CAIXA Nº {self.numero:03d}".center(L),
+                 self.data_hora.strftime("%d/%m/%Y %H:%M").center(L), "=" * L,
+                 linha("Res. Hóspede", "Total"), "-" * L]
+        for r in sorted(self.reservas, key=lambda r: r.id):
+            texto.append(linha(f"{r.id:>4} {r.hospede.nome[:22]} ({r.quarto.numero})", formatar_moeda(r.total)))
+        texto += ["-" * L,
+                  linha("Hospedagens:", str(self.quantidade)),
+                  linha("Diárias:", formatar_moeda(self.valor_hospedagem)),
+                  linha("Consumos:", formatar_moeda(self.valor_consumos)),
+                  linha("TOTAL:", formatar_moeda(self.total)),
+                  "=" * L]
+        return "\n".join(texto)
+
+    def salvar_relatorio(self, pasta: str, nome_hotel: str = "Hotel") -> str:
+        """Grava o relatório em <pasta>/caixa_001.txt e devolve o caminho do arquivo."""
+        os.makedirs(pasta, exist_ok=True)
+        caminho = os.path.join(pasta, f"caixa_{self.numero:03d}.txt")
+        with open(caminho, "w", encoding="utf-8") as f:
+            f.write(self.relatorio(nome_hotel) + "\n")
+        return caminho
+
+    def para_dict(self):
+        return {"numero": self.numero, "data_hora": self.data_hora.isoformat(),
+                "reservas": [r.id for r in self.reservas]}
+
+
 # ---------------------------------------------------------------------------
 # Classe gerenciadora
 # ---------------------------------------------------------------------------
@@ -382,6 +448,7 @@ class Hotel:
         self.quartos: dict[str, Quarto] = {}
         self.servicos: dict[int, Servico] = {}
         self.reservas: dict[int, Reserva] = {}
+        self.fechamentos: list[FechamentoCaixa] = []
 
     def _proximo_id(self, colecao: dict) -> int:
         return max(colecao.keys(), default=0) + 1
@@ -477,6 +544,30 @@ class Hotel:
         self.salvar()
         return r
 
+    # ---------------- caixa ----------------
+    def reservas_caixa_aberto(self) -> list[Reserva]:
+        """Hospedagens concluídas que ainda não entraram em nenhum fechamento."""
+        fechadas = {r.id for f in self.fechamentos for r in f.reservas}
+        return [r for r in self.reservas.values()
+                if r.status == StatusReserva.CONCLUIDA and r.id not in fechadas]
+
+    def faturamento_caixa_aberto(self) -> Decimal:
+        return sum((r.total for r in self.reservas_caixa_aberto()), Decimal("0.00"))
+
+    @property
+    def ultimo_fechamento(self) -> FechamentoCaixa | None:
+        return self.fechamentos[-1] if self.fechamentos else None
+
+    def fechar_caixa(self, agora: datetime | None = None) -> FechamentoCaixa:
+        pendentes = self.reservas_caixa_aberto()
+        if not pendentes:
+            raise RegraNegocioErro("Não há hospedagens concluídas desde o último fechamento de caixa.")
+        fechamento = FechamentoCaixa(len(self.fechamentos) + 1,
+                                     agora or datetime.now().replace(microsecond=0), pendentes)
+        self.fechamentos.append(fechamento)
+        self.salvar()
+        return fechamento
+
     # ---------------- painel ----------------
     def situacao_quarto(self, quarto: Quarto, hoje: date | None = None) -> str:
         """'Ocupado' se há hóspede no quarto; 'Reservado' se há reserva para hoje; senão 'Livre'."""
@@ -502,8 +593,7 @@ class Hotel:
             "saidas_hoje": [r for r in ativas
                             if r.status == StatusReserva.EM_HOSPEDAGEM and r.saida == hoje],
             "ocupacao": (len(ocupados) / len(self.quartos) * 100) if self.quartos else 0.0,
-            "faturamento": sum((r.total for r in self.reservas.values()
-                                if r.status == StatusReserva.CONCLUIDA), Decimal("0.00")),
+            "faturamento": self.faturamento_caixa_aberto(),  # desde o último fechamento de caixa
         }
 
     # ---------------- persistência (JSON) ----------------
@@ -516,6 +606,7 @@ class Hotel:
             "quartos": [q.para_dict() for q in self.quartos.values()],
             "servicos": [s.para_dict() for s in self.servicos.values()],
             "reservas": [r.para_dict() for r in self.reservas.values()],
+            "fechamentos": [f.para_dict() for f in self.fechamentos],
         }
         with open(self.arquivo, "w", encoding="utf-8") as f:
             json.dump(dados, f, ensure_ascii=False, indent=2)
@@ -545,6 +636,10 @@ class Hotel:
                 r.consumos.append(Consumo(hotel.servicos[c["servico_id"]],
                                           c["quantidade"], c["preco_unitario"]))
             hotel.reservas[r.id] = r
+        for d in dados.get("fechamentos", []):  # arquivos antigos não têm fechamentos
+            hotel.fechamentos.append(FechamentoCaixa(
+                d["numero"], datetime.fromisoformat(d["data_hora"]),
+                [hotel.reservas[i] for i in d["reservas"] if i in hotel.reservas]))
         return hotel
 
     def _dados_iniciais(self):

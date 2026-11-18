@@ -124,7 +124,7 @@ class AbaPainel(Aba):
                                              ("entradas", "Entradas hoje"),
                                              ("saidas", "Saídas hoje"),
                                              ("ocupacao", "Ocupação hoje"),
-                                             ("fat", "Faturamento (concluídas)")]):
+                                             ("fat", "Faturamento (caixa aberto)")]):
             box = ttk.LabelFrame(self.cards, text=titulo, padding=10)
             box.grid(row=0, column=i, padx=5, sticky="nsew")
             self.cards.columnconfigure(i, weight=1)
