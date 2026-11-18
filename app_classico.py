@@ -11,7 +11,7 @@ import os
 import tkinter as tk
 from tkinter import ttk, messagebox
 
-from modelos import (Hotel, RegraNegocioErro, StatusReserva,
+from modelos import (Hotel, RegraNegocioErro, StatusReserva, LIMITES,
                      ler_data, formatar_data, formatar_moeda)
 
 ARQUIVO_DADOS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "dados_hotel.json")
@@ -47,10 +47,24 @@ class Tabela(ttk.Frame):
         return sel[0] if sel else None
 
 
-def campo(master, rotulo, linha, largura=25, coluna=0):
+def limitar_entrada(entrada, maximo, permitido=None):
+    """Impede digitar além do limite e (opcionalmente) caracteres não permitidos."""
+    def corrigir(_evento=None):
+        atual = entrada.get()
+        novo = "".join(c for c in atual if permitido(c)) if permitido else atual
+        novo = novo[:maximo]
+        if novo != atual:
+            entrada.delete(0, "end")
+            entrada.insert(0, novo)
+    entrada.bind("<KeyRelease>", corrigir, add="+")
+
+
+def campo(master, rotulo, linha, largura=25, coluna=0, limite=None, permitido=None):
     ttk.Label(master, text=rotulo).grid(row=linha, column=coluna, sticky="w", padx=4, pady=3)
     entrada = ttk.Entry(master, width=largura)
     entrada.grid(row=linha, column=coluna + 1, sticky="w", padx=4, pady=3)
+    if limite:
+        limitar_entrada(entrada, limite, permitido)
     return entrada
 
 
@@ -63,6 +77,17 @@ class Aba(ttk.Frame):
 
     def atualizar(self):
         pass
+
+    def botao_excluir(self, tabela, nome, excluir):
+        """Botão 'Excluir': pede confirmação e chama o método de exclusão do Hotel (que aplica as regras)."""
+        def clicar():
+            chave = tabela.selecionado()
+            if not chave:
+                messagebox.showinfo("Atenção", "Selecione um item na tabela.")
+                return
+            if messagebox.askyesno("Excluir", f"Excluir {nome(chave)}? Essa ação não pode ser desfeita."):
+                self.executar(lambda: excluir(chave), "Cadastro excluído.")
+        ttk.Button(self, text="Excluir selecionado", command=clicar).pack(anchor="e", pady=(6, 0))
 
     def executar(self, acao, sucesso=None):
         """Executa uma operação e mostra o erro amigável se uma regra for violada."""
@@ -125,13 +150,17 @@ class AbaHospedes(Aba):
         super().__init__(master, hotel)
         form = ttk.LabelFrame(self, text="Novo hóspede", padding=8)
         form.pack(fill="x")
-        self.nome = campo(form, "Nome:", 0, 35)
-        self.doc = campo(form, "Documento (CPF/RG):", 1)
-        self.tel = campo(form, "Telefone:", 2)
+        self.nome = campo(form, "Nome:", 0, 35, limite=LIMITES["nome"])
+        self.doc = campo(form, "Documento (CPF 11 dígitos / RG):", 1, limite=LIMITES["documento"],
+                         permitido=lambda c: c.isdigit() or c in ".-xX")
+        self.tel = campo(form, "Telefone (com DDD):", 2, limite=LIMITES["telefone"],
+                         permitido=lambda c: c.isdigit() or c in " ()-")
         ttk.Button(form, text="Cadastrar", style="Accent.TButton", command=self.cadastrar).grid(row=3, column=1, sticky="w", padx=4, pady=6)
 
         self.tabela = Tabela(self, ("ID", "Nome", "Documento", "Telefone"), (50, 260, 160, 140))
         self.tabela.pack(fill="both", expand=True, pady=(10, 0))
+        self.botao_excluir(self.tabela, lambda k: self.hotel.hospedes[int(k)].nome,
+                           lambda k: self.hotel.excluir_hospede(int(k)))
 
     def cadastrar(self):
         h = self.executar(lambda: self.hotel.cadastrar_hospede(self.nome.get(), self.doc.get(), self.tel.get()),
@@ -141,7 +170,7 @@ class AbaHospedes(Aba):
                 e.delete(0, "end")
 
     def atualizar(self):
-        self.tabela.preencher([(h.id, (h.id, h.nome, h.documento, h.telefone))
+        self.tabela.preencher([(h.id, (h.id, h.nome, h.documento_formatado, h.telefone_formatado))
                                for h in self.hotel.hospedes.values()])
 
 
@@ -150,9 +179,10 @@ class AbaQuartos(Aba):
         super().__init__(master, hotel)
         form = ttk.LabelFrame(self, text="Novo quarto / alterar diária", padding=8)
         form.pack(fill="x")
-        self.numero = campo(form, "Número:", 0, 10)
-        self.categoria = campo(form, "Categoria:", 1)
-        self.capacidade = campo(form, "Capacidade (pessoas):", 2, 10)
+        self.numero = campo(form, "Número:", 0, 10, limite=LIMITES["numero_quarto"])
+        self.categoria = campo(form, "Categoria:", 1, limite=LIMITES["categoria"])
+        self.capacidade = campo(form, "Capacidade (pessoas):", 2, 10, limite=2,
+                                permitido=lambda c: c.isdigit())
         self.diaria = campo(form, "Diária (R$):", 3, 12)
         botoes = ttk.Frame(form)
         botoes.grid(row=4, column=1, sticky="w", pady=6)
@@ -161,6 +191,7 @@ class AbaQuartos(Aba):
 
         self.tabela = Tabela(self, ("Número", "Categoria", "Capacidade", "Diária atual"), (80, 180, 100, 120))
         self.tabela.pack(fill="both", expand=True, pady=(10, 0))
+        self.botao_excluir(self.tabela, lambda k: f"o quarto {k}", lambda k: self.hotel.excluir_quarto(k))
 
     def cadastrar(self):
         self.executar(lambda: self.hotel.cadastrar_quarto(self.numero.get(), self.categoria.get(),
@@ -188,12 +219,14 @@ class AbaServicos(Aba):
         super().__init__(master, hotel)
         form = ttk.LabelFrame(self, text="Novo serviço / extra", padding=8)
         form.pack(fill="x")
-        self.descricao = campo(form, "Descrição:", 0, 35)
+        self.descricao = campo(form, "Descrição:", 0, 35, limite=LIMITES["descricao"])
         self.preco = campo(form, "Preço (R$):", 1, 12)
         ttk.Button(form, text="Cadastrar", style="Accent.TButton", command=self.cadastrar).grid(row=2, column=1, sticky="w", padx=4, pady=6)
 
         self.tabela = Tabela(self, ("ID", "Descrição", "Preço"), (50, 300, 120))
         self.tabela.pack(fill="both", expand=True, pady=(10, 0))
+        self.botao_excluir(self.tabela, lambda k: f"'{self.hotel.servicos[int(k)].descricao}'",
+                           lambda k: self.hotel.excluir_servico(int(k)))
 
     def cadastrar(self):
         self.executar(lambda: self.hotel.cadastrar_servico(self.descricao.get(), self.preco.get()),

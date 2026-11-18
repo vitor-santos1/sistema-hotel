@@ -74,6 +74,23 @@ Hospede ──1──┐                 ┌──1── Quarto
 - A diária e o preço dos consumos ficam guardados na reserva: se o catálogo mudar, a conta não muda.
 - Dinheiro usa `Decimal`, nunca `float`.
 
+### Validações dos cadastros (`modelos.py`, valem para as duas telas)
+| Campo | Regra |
+|---|---|
+| Nome | 3 a 60 caracteres, só letras (aceita espaço, apóstrofo, hífen e ponto) |
+| Documento | CPF com 11 dígitos ou RG com 7 a 9 (pode terminar em X). Aceita pontos e traço, guarda só os números. Não repete |
+| Telefone | Opcional. Se informado: DDD + número (10 ou 11 dígitos) |
+| Quarto | Número até 6 caracteres, categoria até 20, capacidade de 1 a 10 |
+| Serviço | Descrição de 2 a 40 caracteres, preço não negativo |
+
+Nas telas, os campos também **impedem digitar além do limite** (função `limitar_entrada`).
+
+### Exclusão de cadastros
+Cada tela (Hóspedes, Quartos, Serviços) tem o botão **Excluir selecionado**, que chama `Hotel.excluir_hospede`, `excluir_quarto` e `excluir_servico`.
+- Não exclui hóspede ou quarto com reserva **ativa ou concluída**, para a conta não ficar sem dono (integridade dos dados).
+- Reservas **canceladas** são apagadas junto, porque não têm valor financeiro.
+- Não exclui serviço que já foi lançado em alguma hospedagem.
+
 ## 🎤 Roteiro da demonstração
 
 1. **Painel**: mostrar o mapa de quartos (verde = livre, amarelo = reservado, vermelho = ocupado).

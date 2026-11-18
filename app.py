@@ -15,7 +15,7 @@ from tkinter import ttk, messagebox
 
 import customtkinter as ctk
 
-from modelos import (Hotel, RegraNegocioErro, StatusReserva,
+from modelos import (Hotel, RegraNegocioErro, StatusReserva, LIMITES,
                      ler_data, formatar_data, formatar_moeda)
 
 ARQUIVO_DADOS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "dados_hotel.json")
@@ -96,6 +96,22 @@ class Cartao(ctk.CTkFrame):
             ctk.CTkLabel(self, text=titulo, font=fonte(15, True)).pack(anchor="w", padx=18, pady=(14, 6))
 
 
+def limitar_entrada(entrada, maximo, permitido=None):
+    """Impede digitar além do limite e (opcionalmente) caracteres não permitidos."""
+    def corrigir(_evento=None):
+        atual = entrada.get()
+        novo = "".join(c for c in atual if permitido(c)) if permitido else atual
+        novo = novo[:maximo]
+        if novo != atual:
+            entrada.delete(0, "end")
+            entrada.insert(0, novo)
+    entrada.bind("<KeyRelease>", corrigir, add="+")
+
+
+def so_numeros(c):
+    return c.isdigit()
+
+
 class Formulario(ctk.CTkFrame):
     """Organiza rótulos e campos em linhas."""
 
@@ -103,11 +119,13 @@ class Formulario(ctk.CTkFrame):
         super().__init__(master, fg_color="transparent")
         self.linha = 0
 
-    def campo(self, rotulo, exemplo="", largura=240):
+    def campo(self, rotulo, exemplo="", largura=240, limite=None, permitido=None):
         ctk.CTkLabel(self, text=rotulo, font=fonte(13), text_color=TEXTO_SUAVE).grid(
             row=self.linha, column=0, sticky="w", pady=6, padx=(0, 12))
         entrada = ctk.CTkEntry(self, width=largura, height=36, placeholder_text=exemplo)
         entrada.grid(row=self.linha, column=1, sticky="w", pady=6)
+        if limite:
+            limitar_entrada(entrada, limite, permitido)
         self.linha += 1
         return entrada
 
@@ -152,6 +170,20 @@ class Pagina(ctk.CTkFrame):
 
     def atualizar(self):
         pass
+
+    def botao_excluir(self, master, comando, texto="Excluir selecionado"):
+        ctk.CTkButton(master, text=texto, command=comando, height=36, fg_color=VERMELHO,
+                      hover_color="#c2393d", font=fonte(13, True),
+                      corner_radius=10).pack(anchor="e", padx=18, pady=(0, 16))
+
+    def excluir_selecionado(self, tabela, nome, excluir):
+        """Pede confirmação e chama o método de exclusão do Hotel (que aplica as regras)."""
+        chave = tabela.selecionado()
+        if not chave:
+            messagebox.showinfo("Atenção", "Selecione um item na tabela.")
+            return
+        if messagebox.askyesno("Excluir", f"Excluir {nome(chave)}? Essa ação não pode ser desfeita."):
+            self.executar(lambda: excluir(chave), "Cadastro excluído.")
 
     def executar(self, acao, sucesso=None):
         """Executa uma operação; se uma regra for violada, mostra o motivo."""
@@ -240,23 +272,30 @@ class PaginaHospedes(Pagina):
         form_card.pack(side="left", fill="y", padx=(0, 14))
         f = Formulario(form_card)
         f.pack(padx=18, pady=(0, 18))
-        self.nome = f.campo("Nome", "Maria Silva")
-        self.doc = f.campo("Documento", "CPF ou RG")
-        self.tel = f.campo("Telefone", "(11) 99999-0000")
+        self.nome = f.campo("Nome", "Maria Silva", limite=LIMITES["nome"])
+        self.doc = f.campo("Documento", "CPF (11 dígitos) ou RG", limite=LIMITES["documento"],
+                           permitido=lambda c: c.isdigit() or c in ".-xX")
+        self.tel = f.campo("Telefone", "(11) 99999-0000", limite=LIMITES["telefone"],
+                           permitido=lambda c: c.isdigit() or c in " ()-")
         f.botao("Cadastrar hóspede", self.cadastrar)
 
         lista = Cartao(self, "Hóspedes cadastrados")
         lista.pack(side="left", fill="both", expand=True)
         self.tabela = Tabela(lista, ("ID", "Nome", "Documento", "Telefone"), (50, 230, 150, 140))
-        self.tabela.pack(fill="both", expand=True, padx=18, pady=(0, 18))
+        self.tabela.pack(fill="both", expand=True, padx=18, pady=(0, 10))
+        self.botao_excluir(lista, self.excluir)
 
     def cadastrar(self):
         if self.executar(lambda: self.hotel.cadastrar_hospede(self.nome.get(), self.doc.get(), self.tel.get()),
                          "Hóspede cadastrado!"):
             limpar(self.nome, self.doc, self.tel)
 
+    def excluir(self):
+        self.excluir_selecionado(self.tabela, lambda k: self.hotel.hospedes[int(k)].nome,
+                                 lambda k: self.hotel.excluir_hospede(int(k)))
+
     def atualizar(self):
-        self.tabela.preencher([(h.id, (h.id, h.nome, h.documento, h.telefone), None)
+        self.tabela.preencher([(h.id, (h.id, h.nome, h.documento_formatado, h.telefone_formatado), None)
                                for h in self.hotel.hospedes.values()])
 
 
@@ -270,9 +309,9 @@ class PaginaQuartos(Pagina):
         form_card.pack(side="left", fill="y", padx=(0, 14))
         f = Formulario(form_card)
         f.pack(padx=18, pady=(0, 18))
-        self.numero = f.campo("Número", "101")
-        self.categoria = f.campo("Categoria", "Standard, Luxo...")
-        self.capacidade = f.campo("Capacidade", "nº de pessoas")
+        self.numero = f.campo("Número", "101", limite=LIMITES["numero_quarto"])
+        self.categoria = f.campo("Categoria", "Standard, Luxo...", limite=LIMITES["categoria"])
+        self.capacidade = f.campo("Capacidade", "nº de pessoas", limite=2, permitido=so_numeros)
         self.diaria = f.campo("Diária (R$)", "180,00")
         f.botao("Cadastrar quarto", self.cadastrar)
         f.botao("Alterar diária do selecionado", self.alterar_diaria, cor="#6b7280")
@@ -280,13 +319,18 @@ class PaginaQuartos(Pagina):
         lista = Cartao(self, "Quartos do hotel")
         lista.pack(side="left", fill="both", expand=True)
         self.tabela = Tabela(lista, ("Número", "Categoria", "Capacidade", "Diária atual"), (90, 180, 110, 130))
-        self.tabela.pack(fill="both", expand=True, padx=18, pady=(0, 18))
+        self.tabela.pack(fill="both", expand=True, padx=18, pady=(0, 10))
+        self.botao_excluir(lista, self.excluir)
 
     def cadastrar(self):
         if self.executar(lambda: self.hotel.cadastrar_quarto(self.numero.get(), self.categoria.get(),
                                                              int(self.capacidade.get()), self.diaria.get()),
                          "Quarto cadastrado!"):
             limpar(self.numero, self.categoria, self.capacidade, self.diaria)
+
+    def excluir(self):
+        self.excluir_selecionado(self.tabela, lambda k: f"o quarto {k}",
+                                 lambda k: self.hotel.excluir_quarto(k))
 
     def alterar_diaria(self):
         numero = self.tabela.selecionado()
@@ -314,19 +358,24 @@ class PaginaServicos(Pagina):
         form_card.pack(side="left", fill="y", padx=(0, 14))
         f = Formulario(form_card)
         f.pack(padx=18, pady=(0, 18))
-        self.descricao = f.campo("Descrição", "Água (frigobar)")
+        self.descricao = f.campo("Descrição", "Água (frigobar)", limite=LIMITES["descricao"])
         self.preco = f.campo("Preço (R$)", "10,00")
         f.botao("Cadastrar serviço", self.cadastrar)
 
         lista = Cartao(self, "Catálogo")
         lista.pack(side="left", fill="both", expand=True)
         self.tabela = Tabela(lista, ("ID", "Descrição", "Preço"), (50, 300, 120))
-        self.tabela.pack(fill="both", expand=True, padx=18, pady=(0, 18))
+        self.tabela.pack(fill="both", expand=True, padx=18, pady=(0, 10))
+        self.botao_excluir(lista, self.excluir)
 
     def cadastrar(self):
         if self.executar(lambda: self.hotel.cadastrar_servico(self.descricao.get(), self.preco.get()),
                          "Serviço cadastrado!"):
             limpar(self.descricao, self.preco)
+
+    def excluir(self):
+        self.excluir_selecionado(self.tabela, lambda k: f"'{self.hotel.servicos[int(k)].descricao}'",
+                                 lambda k: self.hotel.excluir_servico(int(k)))
 
     def atualizar(self):
         self.tabela.preencher([(s.id, (s.id, s.descricao, formatar_moeda(s.preco)), None)

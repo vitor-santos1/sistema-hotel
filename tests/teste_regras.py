@@ -65,5 +65,46 @@ try:
 except RegraNegocioErro:
     pass
 
+# ---------------- validações de cadastro ----------------
+def deve_falhar(funcao, *args):
+    try:
+        funcao(*args)
+    except RegraNegocioErro:
+        return
+    raise AssertionError(f"deveria bloquear: {args}")
+
+deve_falhar(hotel.cadastrar_hospede, "Al", "11122233344")                   # nome curto
+deve_falhar(hotel.cadastrar_hospede, "Ana123", "11122233344")               # número no nome
+deve_falhar(hotel.cadastrar_hospede, "A" * 61, "11122233344")               # nome longo
+deve_falhar(hotel.cadastrar_hospede, "Ana Lima", "123")                     # documento curto
+deve_falhar(hotel.cadastrar_hospede, "Ana Lima", "123456789012")            # documento longo
+deve_falhar(hotel.cadastrar_hospede, "Ana Lima", "ABC12345")                # letras no documento
+deve_falhar(hotel.cadastrar_hospede, "Ana Lima", "11122233344", "123")      # telefone curto
+deve_falhar(hotel.cadastrar_hospede, "Outra", "123.456.789-00")             # CPF repetido (com máscara)
+ana = hotel.cadastrar_hospede("Ana D'Ávila-Lima", "12.345.678-X", "(11) 3333-4444")
+assert ana.documento == "12345678X" and ana.telefone == "1133334444"
+assert hotel.cadastrar_hospede("Bia Souza", "111.222.333-44", "").documento_formatado == "111.222.333-44"
+deve_falhar(hotel.cadastrar_quarto, "1234567", "Standard", 2, "100")        # número longo
+deve_falhar(hotel.cadastrar_quarto, "999", "C" * 21, 2, "100")              # categoria longa
+deve_falhar(hotel.cadastrar_quarto, "999", "Standard", 11, "100")           # capacidade acima do limite
+deve_falhar(hotel.cadastrar_servico, "X", "5")                              # descrição curta
+deve_falhar(hotel.cadastrar_servico, "S" * 41, "5")                         # descrição longa
+
+# ---------------- exclusões ----------------
+deve_falhar(hotel.excluir_hospede, hospede.id)       # tem reserva concluída
+deve_falhar(hotel.excluir_quarto, "101")             # tem reserva concluída
+deve_falhar(hotel.excluir_servico, agua.id)          # já lançado em hospedagem
+hotel.excluir_servico(hotel.cadastrar_servico("Jornal", "5").id)   # nunca usado: pode excluir
+hotel.cadastrar_quarto("500", "Luxo", 2, "300")
+rc = hotel.reservar(ana.id, "500", date(2026, 12, 1), date(2026, 12, 3), 2)
+deve_falhar(hotel.excluir_hospede, ana.id)           # reserva confirmada bloqueia
+deve_falhar(hotel.excluir_quarto, "500")
+rc.cancelar()
+hotel.excluir_hospede(ana.id)                        # cancelada: apaga o hóspede e a reserva
+assert rc.id not in hotel.reservas and ana.id not in hotel.hospedes
+hotel.excluir_quarto("500")
+assert "500" not in hotel.quartos
+deve_falhar(hotel.excluir_hospede, 999)
+
 print(r.extrato())
 print("\nTodos os testes passaram!")
