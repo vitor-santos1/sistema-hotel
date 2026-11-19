@@ -22,10 +22,7 @@ def deve_falhar(acao):
 hotel = Hotel()  # sem arquivo: não grava nada
 hotel.cadastrar_hospede("Maria Silva", "12345678900", "11999990000")
 hotel.cadastrar_quarto("101", "Standard", 2, "180")
-hotel.cadastrar_servico("Água", "10")
-hotel.cadastrar_servico("Lavanderia", "20")
-maria, quarto = hotel.hospedes[1], hotel.quartos["101"]
-agua, lavanderia = hotel.servicos[1], hotel.servicos[2]
+quarto = hotel.quartos["101"]
 
 # Reserva de 3 diárias
 hotel.reservar(1, "101", date(2026, 11, 19), date(2026, 11, 22), 2)
@@ -38,10 +35,10 @@ assert hotel.quarto_livre(quarto, date(2026, 11, 22), date(2026, 11, 24))
 assert hotel.quarto_livre(quarto, date(2026, 11, 17), date(2026, 11, 19))
 
 # Situações: consumo antes do check-in é proibido
-deve_falhar(lambda: reserva.lancar_consumo(agua, 1))
+deve_falhar(lambda: reserva.lancar_consumo("Água", 1))
 reserva.check_in()
-reserva.lancar_consumo(agua, 4)
-reserva.lancar_consumo(lavanderia, 1)
+reserva.lancar_consumo("Água", 4)
+reserva.lancar_consumo("Lavanderia", 1)
 
 # Preço contratado: mudar a diária do quarto não muda a conta da reserva
 quarto.diaria = "999"
@@ -49,9 +46,10 @@ assert reserva.total == Decimal("600"), reserva.total   # 3 x 180 + 40 + 20
 
 reserva.checkout()
 assert reserva.status == CONCLUIDA
-deve_falhar(lambda: reserva.lancar_consumo(agua, 1))     # depois do checkout não lança mais
+deve_falhar(lambda: reserva.lancar_consumo("Água", 1))     # depois do checkout não lança mais
 
 # Outras regras
+deve_falhar(lambda: reserva.lancar_consumo("Água", 0))                                      # quantidade zero (já concluída também bloqueia)
 deve_falhar(lambda: hotel.reservar(1, "101", date(2026, 12, 1), date(2026, 12, 2), 3))   # acima da capacidade
 deve_falhar(lambda: hotel.reservar(1, "101", date(2026, 12, 5), date(2026, 12, 5), 1))   # saída = entrada
 deve_falhar(lambda: setattr(quarto, "diaria", "-5"))                                      # diária negativa
