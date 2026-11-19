@@ -11,12 +11,12 @@ olhar o valor de cada variável. Isso não altera nenhum arquivo.
 ## Exercício 1: seguir uma reserva por dentro
 
 **Colocar o ponto de parada**
-1. Abra `modelos.py` e aperte **Ctrl+G**, digite **603** e Enter.
+1. Aperte **Ctrl+P**, digite `hotel` e Enter: abre o `modelos/hotel.py`. Depois aperte **Ctrl+Shift+O**, digite `reservar` e Enter.
 2. Clique na margem **à esquerda do número da linha** `hospede = self.hospedes[hospede_id]` (a linha logo abaixo do `def`).
    Aparece uma **bolinha vermelha**: é o *breakpoint*.
 
 **Rodar com debug**
-3. Abra o `app.py` e aperte **F5**. Se aparecer uma lista, escolha **Python Debugger → Python File**.
+3. Abra o `app.py` (o arquivo que abre o sistema) e aperte **F5**. Se aparecer uma lista, escolha **Python Debugger → Python File**.
 4. O sistema abre. Cadastre uma hóspede (aba **Hóspedes**). Depois, em **Reservas**, escolha a hóspede,
    digite as datas `19/11/2026` e `22/11/2026`, `2` pessoas, clique em **Consultar quartos livres**,
    selecione o quarto 101 e clique em **Confirmar reserva**.
@@ -35,7 +35,7 @@ olhar o valor de cada variável. Isso não altera nenhum arquivo.
 7. Aperte **F10** algumas vezes e olhe o painel **Variables** (à esquerda). Veja `hospede`, `quarto`, `entrada`, `saida`.
    Passe o mouse sobre `entrada` para ver a data.
 8. Na linha `if not self.quarto_livre(quarto, entrada, saida):` aperte **F11** para **entrar** em `quarto_livre`.
-   Entre também em `conflita_com` (**`modelos.py`, linha 365**). Olhe os valores de `entrada`, `self.saida` e `saida`.
+   Entre também em `conflita_com` (**`modelos/reserva.py` (método `conflita_com`)**). Olhe os valores de `entrada`, `self.saida` e `saida`.
 9. Aperte **Shift+F11** para sair e **F10** até a linha `r = Reserva(...)`. Aperte **F11** para entrar no **construtor**
    da `Reserva` e acompanhe as verificações (datas, pessoas, capacidade).
 10. Aperte **F5** para terminar. A reserva aparece no sistema.
@@ -52,7 +52,7 @@ olhar o valor de cada variável. Isso não altera nenhum arquivo.
 
 ## Exercício 3: ver o total da conta
 1. Remova o breakpoint antigo (clique na bolinha) e coloque um em `def total(self) -> Decimal:` da classe `Reserva`
-   (**`modelos.py`, linha 351**).
+   (**`modelos/reserva.py` (método `total`)**).
 2. Pelo sistema, faça check-in, lance consumos e abra a conta na aba **Hospedagem**.
 3. Quando parar, abra o painel **Debug Console** (embaixo) e digite:
    ```

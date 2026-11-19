@@ -40,18 +40,29 @@ Os dados ficam em `dados_hotel.json`, criado na primeira execução com 4 quarto
 
 ## 📁 Organização
 
+**Para achar qualquer coisa, leia o [`MAPA_DO_CODIGO.md`](MAPA_DO_CODIGO.md)**: ele diz em qual arquivo e método está cada função do sistema.
+
+```
+app.py ............ abre o sistema
+modelos/ .......... AS REGRAS E OS CÁLCULOS (uma classe por arquivo)
+  hospede.py  quarto.py  servico.py  consumo.py  reserva.py  caixa.py  hotel.py
+  erros.py  formatos.py  validacoes.py
+telas/ ............ AS TELAS (um arquivo por item do menu)
+  painel.py  reservas.py  hospedagem.py  hospedes.py  quartos.py  servicos.py  analise_dados.py
+  janela.py  pagina.py  componentes.py  estilo.py  configuracao.py
+analise.py ........ classe Analise: lê um arquivo JSON e calcula os indicadores
+app_classico.py ... as telas básicas com Tkinter puro (versão reserva)
+tests/ ............ testes automáticos (teste_regras.py e teste_analise.py)
+estudo/ ........... material para aprender o código (Python do projeto, mini-sistema, debug)
+```
+
+**A regra de ouro:** o arquivo tem o nome da classe. Check-in é da `Reserva`, então está em `modelos/reserva.py`.
+
 | Arquivo | O que tem |
 |---|---|
-| `modelos.py` | Classes do sistema: `Hospede`, `Quarto`, `Servico`, `Consumo`, `Reserva` e `Hotel`. Contém as regras, os cálculos e a gravação em JSON |
-| `app.py` | Telas com visual moderno (CustomTkinter) |
-| `analise.py` | Classe `Analise`: lê um arquivo JSON e calcula indicadores (faturamento, ocupação, ranking...) |
-| `gerar_dados_exemplo.py` | Gera o `dados_exemplo.json` (um ano fictício de movimento, 557 reservas) |
-| `dados_exemplo.json` | Dados fictícios usados pelos testes (opcional na Análise, via "Abrir JSON…") |
-| `app_classico.py` | As telas básicas com Tkinter puro (versão reserva, sem a Análise de dados) |
-| `estudo/` | **Material para aprender o código**: Python do projeto, mini-sistema, debug e mapa das telas |
-| `GUIA_DE_ESTUDO.md` | **Para estudar**: o que cada classe faz, linhas do código, perguntas prováveis e divisão da fala |
-| `tests/teste_regras.py` | Executa o roteiro da apresentação e confere os resultados |
-| `tests/teste_analise.py` | Confere os cálculos da análise com números conhecidos |
+| `MAPA_DO_CODIGO.md` | **Onde está cada coisa** (pergunta → arquivo → método) e botão → tela → regra |
+| `GUIA_DE_ESTUDO.md` | Para estudar: o que cada classe faz, perguntas prováveis e divisão da fala |
+| `gerar_dados_exemplo.py` / `dados_exemplo.json` | Dados fictícios usados pelos testes (opcional na Análise, via "Abrir JSON…") |
 | `instalar.bat` / `executar.bat` | Instalação e execução com dois cliques no Windows |
 | `docs/prints/` | Capturas de tela |
 
@@ -70,7 +81,7 @@ Hospede ──1──┐                 ┌──1── Quarto
 - **Fechamento de caixa**: `FechamentoCaixa` reúne as hospedagens concluídas desde o fechamento anterior.
 - **Encapsulamento**: `Quarto.diaria` é uma `@property` que valida o valor.
 - **Herança**: cada tela herda de `Pagina`; `Indicador` herda de `Cartao`. `Cartao`, `Formulario`, `Tabela` e `Grafico` são componentes reutilizáveis.
-- **Separação**: as telas só chamam os métodos das classes. Toda regra fica em `modelos.py`.
+- **Separação**: as telas só chamam os métodos das classes. Toda regra fica na pasta `modelos/`.
 
 ### Regras de negócio
 - Conflito de datas: há conflito quando `nova_entrada < saida_existente` e `nova_saida > entrada_existente`.
@@ -81,7 +92,7 @@ Hospede ──1──┐                 ┌──1── Quarto
 - A diária e o preço dos consumos ficam guardados na reserva: se o catálogo mudar, a conta não muda.
 - Dinheiro usa `Decimal`, nunca `float`.
 
-### Validações dos cadastros (`modelos.py`, valem para as duas telas)
+### Validações dos cadastros (`modelos/validacoes.py`, valem para as duas telas)
 | Campo | Regra |
 |---|---|
 | Nome | 3 a 60 caracteres, só letras (aceita espaço, apóstrofo, hífen e ponto) |

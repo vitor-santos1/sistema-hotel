@@ -3,7 +3,7 @@
 Este guia é para quem **não é muito bom de Python**. Ele explica, com trechos reais do nosso código, as
 cerca de 20 ideias que aparecem nos arquivos. Quem entende estas ideias consegue ler o projeto inteiro.
 
-Como usar: leia uma seção, abra o arquivo na linha indicada (**Ctrl+G** no VS Code) e veja o trecho de verdade.
+Como usar: leia uma seção, abra o arquivo indicado (**Ctrl+P** abre pelo nome; **Ctrl+Shift+O** vai até o método) e veja o trecho de verdade.
 Antes de começar, rode o mini-sistema, que usa várias destas ideias em pequeno:
 
 ```bash
@@ -32,7 +32,7 @@ def formatar_data(d: date) -> str:
 - `def` cria a função; `d` é o valor que ela recebe; `return` devolve o resultado.
 - `: date` e `-> str` são **dicas de tipo**: avisam o que entra e o que sai. Ajudam quem lê, não mudam nada na execução.
 - Usar a função: `formatar_data(hoje)`.
-- Onde aparece: `modelos.py`, linha 38.
+- Onde aparece: `modelos/formatos.py` (função `dinheiro`).
 
 ## 4. Classes e objetos
 - **Classe** é o molde: `Reserva`. **Objeto** é uma unidade feita com o molde: a reserva da Maria.
@@ -45,7 +45,7 @@ class Hospede:
         self.nome = nome
 ```
 Criar um objeto: `maria = Hospede(1, "Maria Silva", "12345678900")`.
-- Onde aparece: `modelos.py`, linha 167 e, o mais importante, `modelos.py`, linha 306.
+- Onde aparece: `modelos/hospede.py` (classe `Hospede`) e, o mais importante, `modelos/reserva.py` (classe `Reserva`).
 
 ## 5. Atributos e métodos
 - **Atributo** é um dado do objeto: `reserva.entrada`.
@@ -59,8 +59,8 @@ def total(self) -> Decimal:
     return self.valor_hospedagem + self.valor_consumos
 ```
 Por causa do `@property`, escrevemos `reserva.total` (sem parênteses) e o Python calcula na hora.
-- Onde aparece: `modelos.py`, linha 351.
-- Com `@diaria.setter` ele também controla a **escrita**: `modelos.py`, linha 230 valida antes de guardar. Isso é **encapsulamento**.
+- Onde aparece: `modelos/reserva.py` (método `total`).
+- Com `@diaria.setter` ele também controla a **escrita**: `modelos/quarto.py` (método `diaria`) valida antes de guardar. Isso é **encapsulamento**.
 
 ## 7. `if` e `raise` (regras e erros)
 ```python
@@ -72,7 +72,7 @@ def check_in(self):
 - `if` testa uma condição. `!=` quer dizer "diferente de". `==` é "igual a".
 - `raise` **lança um erro** e interrompe o método. A linha seguinte não roda.
 - Se o `if` não for verdadeiro, o código segue e muda o status.
-- Onde aparece: `modelos.py`, linha 373.
+- Onde aparece: `modelos/reserva.py` (método `check_in`).
 
 ## 8. `try` / `except` (capturar erros)
 ```python
@@ -82,7 +82,7 @@ except (ValueError, KeyError, TypeError, AttributeError):
     raise RegraNegocioErro("Esse arquivo não tem o formato de dados do hotel ...")
 ```
 O Python **tenta** o bloco do `try`. Se acontecer um dos erros listados no `except`, o programa não quebra: roda o bloco do `except`.
-- Onde aparece: `analise.py`, linha 40 e, nas telas, `app.py`, linha 293, que captura o `RegraNegocioErro` e mostra a mensagem.
+- Onde aparece: `analise.py` (método `de_arquivo`) e, nas telas, `telas/pagina.py` (método `executar`), que captura o `RegraNegocioErro` e mostra a mensagem.
 
 ## 9. Listas e `for`
 ```python
@@ -91,7 +91,7 @@ for c in self.consumos:
 ```
 - Lista: `[1, 2, 3]`. `append` acrescenta um item no fim.
 - `for c in lista:` repete o bloco uma vez para cada item (`c` é o item da vez).
-- Onde aparece: `modelos.py`, linha 398.
+- Onde aparece: `modelos/reserva.py` (método `extrato`).
 
 ## 10. Lista em uma linha (*list comprehension*)
 ```python
@@ -99,7 +99,7 @@ return [q for q in self.quartos.values()
         if q.comporta(pessoas) and self.quarto_livre(q, entrada, saida)]
 ```
 Lê-se: "uma lista com cada `q` dos quartos, **se** ele comporta o grupo e está livre". É um `for` com filtro escrito numa linha.
-- Onde aparece: `modelos.py`, linha 596.
+- Onde aparece: `modelos/hotel.py` (método `quartos_disponiveis`).
 
 ## 11. Dicionários
 Guardam pares **chave → valor**. A gente acha o valor pela chave.
@@ -109,7 +109,7 @@ self.hospedes[h.id] = h                    # guarda: chave = id, valor = o hósp
 hotel.hospedes[3]                          # busca o hóspede de id 3
 ```
 Outros usos: `.values()` (só os valores), `.items()` (pares chave e valor), `.get(chave)` (busca sem dar erro se não existir).
-- Onde aparece: `modelos.py`, linha 505 e `modelos.py`, linha 74.
+- Onde aparece: `modelos/hotel.py` (método `__init__`) e `modelos/validacoes.py`.
 
 ## 12. *f-strings*: texto com valores dentro
 ```python
@@ -122,10 +122,10 @@ O `f` antes das aspas faz o `{...}` ser trocado pelo valor. Resultado: "O quarto
 |---|---|---|
 | `len(x)` | quantos itens | `len(self.reservas)` |
 | `sum(...)` | soma | `sum(c.subtotal for c in self.consumos)` |
-| `any(...)` | `True` se **pelo menos um** passa no teste | `modelos.py`, linha 591 |
-| `all(...)` | `True` se **todos** passam | `modelos.py`, linha 79 |
-| `sorted(...)` | ordena | `analise.py`, linha 127 |
-| `min(...)`, `max(...)` | menor e maior | `analise.py`, linha 87 |
+| `any(...)` | `True` se **pelo menos um** passa no teste | `modelos/hotel.py` (método `quarto_livre`) |
+| `all(...)` | `True` se **todos** passam | `modelos/validacoes.py` (função `validar_nome`) |
+| `sorted(...)` | ordena | `analise.py` (método `faturamento_por_quarto`) |
+| `min(...)`, `max(...)` | menor e maior | `analise.py` (método `periodo`) |
 
 ## 14. `lambda`: função de uma linha
 ```python
@@ -139,7 +139,7 @@ os quartos pelo valor, do maior para o menor.
 from datetime import date, datetime
 from decimal import Decimal
 ```
-Traz ferramentas prontas. `from modelos import Hotel` traz a classe `Hotel` do nosso arquivo `modelos.py`. É assim que
+Traz ferramentas prontas. `from modelos import Hotel` traz a classe `Hotel` da nossa pasta `modelos/`. É assim que
 as telas usam as classes.
 
 ## 16. `Enum`: lista fechada de valores
@@ -149,7 +149,7 @@ class StatusReserva(Enum):
     EM_HOSPEDAGEM = "Em hospedagem"
 ```
 Em vez de textos soltos que poderiam ser digitados errado, usamos `StatusReserva.CONFIRMADA`.
-`.value` é o texto bonito; `.name` é o nome (`"CONFIRMADA"`). Onde aparece: `modelos.py`, linha 295.
+`.value` é o texto bonito; `.name` é o nome (`"CONFIRMADA"`). Onde aparece: `modelos/reserva.py` (classe `StatusReserva`).
 
 ## 17. `Decimal`: dinheiro sem erro
 Com `float`: `0.1 + 0.2` dá `0.30000000000000004`. Com `Decimal` a conta é exata.
@@ -163,7 +163,7 @@ with open(self.arquivo, "w", encoding="utf-8") as f:
 - `open(arquivo, "w")` abre para **escrever** (`"r"` seria ler).
 - `with` fecha o arquivo sozinho no fim, mesmo se der erro.
 - `json.dump` grava o dicionário em formato JSON; `json.load` faz o caminho contrário.
-- Onde aparece: `modelos.py`, linha 674 (grava) e `modelos.py`, linha 692 (lê).
+- Onde aparece: `modelos/hotel.py` (método `salvar`) (grava) e `modelos/hotel.py` (método `carregar`) (lê).
 
 ## 19. `@classmethod` e `cls`
 Um método de classe não precisa de um objeto já criado. `Hotel.carregar("dados.json")` **cria** um Hotel a partir do arquivo.
@@ -171,7 +171,7 @@ Dentro dele, `cls` é a própria classe `Hotel`.
 
 ## 20. `if __name__ == "__main__":`
 Esse bloco só roda quando o arquivo é executado direto (`python app.py`), e não quando outro arquivo o importa.
-É o ponto de entrada do programa. Onde aparece: no fim do `app.py`, linha 1047.
+É o ponto de entrada do programa. Onde aparece: no fim do `app.py`.
 
 ---
 
